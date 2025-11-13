@@ -18,3 +18,34 @@ export async function login(username: string, password: string) {
 
   return res.json();
 }
+
+
+export async function getResidentProfile(token: string) {
+  const res = await fetch(`${API_BASE}/resident/profile`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.message || "Failed to load profile");
+  }
+
+  return res.json();
+}
+
+export async function getResidentInvoices(token: string) {
+  const res = await fetch(`${API_BASE}/resident/invoices`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.message || "Failed to load invoices");
+  }
+
+  return res.json();
+}
