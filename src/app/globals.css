@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-beige: #F2EDE3;
+  --brand-cyan: #12AFCB;
+}
+
+body {
+  background: var(--bg-beige);
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", "Noto Kufi Arabic",
+    "Noto Naskh Arabic", "Amiri", sans-serif;
+  direction: rtl;
+}
