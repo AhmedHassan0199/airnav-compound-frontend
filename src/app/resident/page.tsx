@@ -99,14 +99,20 @@ function InvoiceCard({ invoice }: { invoice: Invoice }) {
         <span>{invoice.paid_date || "-"}</span>
       </div>
 
-      <button
-        onClick={() =>
-          downloadInvoicePdf(invoice.id, invoice.year, invoice.month)
-        }
-        className="mt-1 self-start text-xs px-3 py-1.5 rounded-lg bg-brand-cyan text-white hover:opacity-90"
-      >
-        تحميل الفاتورة PDF
-      </button>
+      {invoice.status === "PAID" ? (
+        <button
+          onClick={() =>
+            downloadInvoicePdf(invoice.id, invoice.year, invoice.month)
+          }
+          className="mt-1 self-start text-xs px-3 py-1.5 rounded-lg bg-brand-cyan text-white hover:opacity-90"
+        >
+          تحميل الفاتورة PDF
+        </button>
+      ) : (
+        <p className="mt-1 text-[11px] text-slate-500">
+          لا يمكن تحميل الفاتورة قبل سدادها.
+        </p>
+      )}
     </div>
   );
 }
