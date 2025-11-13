@@ -20,7 +20,11 @@ export async function login(username: string, password: string) {
 }
 
 
-export async function getResidentProfile(token: string) {
+export async function getResidentProfile(token: string | null) {
+  if (!token) {
+    throw new Error("Missing token");
+  }
+
   const res = await fetch(`${API_BASE}/resident/profile`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -35,7 +39,12 @@ export async function getResidentProfile(token: string) {
   return res.json();
 }
 
-export async function getResidentInvoices(token: string) {
+
+export async function getResidentInvoices(token: string | null) {
+  if (!token) {
+    throw new Error("Missing token");
+  }
+
   const res = await fetch(`${API_BASE}/resident/invoices`, {
     headers: {
       Authorization: `Bearer ${token}`,

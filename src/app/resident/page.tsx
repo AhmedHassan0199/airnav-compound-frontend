@@ -37,35 +37,38 @@ export default function ResidentPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (typeof window === "undefined") return;
+  if (authLoading) return;
+  if (typeof window === "undefined") return;
 
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      setError("لم يتم العثور على جلسة تسجيل الدخول");
+  const token = localStorage.getItem("access_token");
+
+  async function loadData() {
+    try {
+      setError(null);
+      setLoading(true);
+
+      const [p, inv] = await Promise.all([
+        getResidentProfile(token),
+        getResidentInvoices(token),
+      ]);
+
+      setProfile(p);
+      setInvoices(inv);
+    } catch (err: any) {
+      setError(err.message || "حدث خطأ أثناء تحميل البيانات");
+    } finally {
       setLoading(false);
-      return;
     }
+  }
 
-    async function loadData() {
-      try {
-        setError(null);
-        setLoading(true);
-        const [p, inv] = await Promise.all([
-          getResidentProfile(token),
-          getResidentInvoices(token),
-        ]);
-        setProfile(p);
-        setInvoices(inv);
-      } catch (err: any) {
-        setError(err.message || "حدث خطأ أثناء تحميل البيانات");
-      } finally {
-        setLoading(false);
-      }
-    }
+  if (!token) {
+    setError("لم يتم العثور على جلسة تسجيل الدخول");
+    setLoading(false);
+    return;
+  }
 
-    loadData();
-  }, [authLoading]);
+  loadData();
+}, [authLoading]);
 
   if (authLoading || loading) {
     return (
