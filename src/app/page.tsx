@@ -1,8 +1,6 @@
-"use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { login } from "@/lib/api";
+import React, { useState } from "react";
+import axios from "axios";
+import { useRouter } from "next/router";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -10,70 +8,86 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleLogin = async (e: any) => {
     e.preventDefault();
     setError("");
 
     try {
-      // Call backend API
-      const data = await login(username, password);
+      const res = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_BASE}/auth/login`,
+        { username, password }
+      );
 
-      // Save token + user
-      localStorage.setItem("access_token", data.access_token);
-      localStorage.setItem("username", data.user.username);
-      localStorage.setItem("role", data.user.role);
+      localStorage.setItem("access_token", res.data.access_token);
+      localStorage.setItem("role", res.data.role);
 
-      // Redirect by role
-      if (data.user.role === "SUPERADMIN" || data.user.role === "ADMIN") {
-        router.push("/dashboard");
-      } else if (data.user.role === "TREASURER") {
-        router.push("/treasurer");
-      } else {
-        router.push("/resident");
-      }
-
+      if (res.data.role === "RESIDENT") router.push("/resident");
+      else if (res.data.role === "ADMIN") router.push("/admin");
+      else if (res.data.role === "TREASURER") router.push("/treasurer");
+      else if (res.data.role === "SUPERADMIN") router.push("/superadmin");
     } catch (err: any) {
-      setError(err.message || "Login failed");
+      setError("بيانات الدخول غير صحيحة. تأكد من اسم المستخدم وكلمة السر.");
     }
-  }
+  };
 
   return (
-    <div dir="rtl" className="min-h-screen flex items-center justify-center bg-brand-beige p-4">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white drop-shadow-lg rounded-xl p-6 w-full max-w-sm space-y-4"
-      >
-        <h1 className="text-xl font-bold text-center text-brand-cyan">
-          تسجيل الدخول
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#EDE7DB] to-[#CFEDEF] px-4" dir="rtl">
+      <div className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md animate-fadeIn">
+        {/* Title */}
+        <h1 className="text-3xl font-bold text-center mb-2 text-[#008B9A]">
+          بوابة اتحاد شاغلين
         </h1>
+        <h2 className="text-lg text-center text-gray-600 mb-8">
+          مدينة الملاحة الجوية – حدائق النزهة
+        </h2>
 
-        {error && (
-          <div className="text-red-600 text-sm text-center">{error}</div>
-        )}
+        {/* Form */}
+        <form onSubmit={handleLogin} className="space-y-5">
+          <div>
+            <label className="block mb-1 font-semibold text-gray-700">اسم المستخدم</label>
+            <input
+              type="text"
+              className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00A9B7]"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="اكتب اسم المستخدم"
+              required
+            />
+          </div>
 
-        <input
-          type="text"
-          placeholder="اسم المستخدم"
-          className="w-full border p-3 rounded-lg text-right"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
+          <div>
+            <label className="block mb-1 font-semibold text-gray-700">كلمة المرور</label>
+            <input
+              type="password"
+              className="w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00A9B7]"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              required
+            />
+          </div>
 
-        <input
-          type="password"
-          placeholder="كلمة المرور"
-          className="w-full border p-3 rounded-lg text-right"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+          {error && <p className="text-red-600 text-sm text-center">{error}</p>}
 
-        <button
-          type="submit"
-          className="w-full bg-brand-cyan text-white py-3 rounded-lg font-semibold"
-        >
-          دخول
-        </button>
-      </form>
+          <button
+            type="submit"
+            className="w-full bg-[#00A9B7] hover:bg-[#008B9A] text-white py-3 rounded-lg text-lg font-semibold transition-all duration-200"
+          >
+            تسجيل الدخول
+          </button>
+        </form>
+      </div>
+
+      {/* Animation */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.7s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
