@@ -260,3 +260,34 @@ export async function treasurerCreateSettlement(
 
   return res.json();
 }
+
+export async function superadminCreateUser(
+  token: string | null,
+  payload: {
+    username: string;
+    password: string;
+    role: "RESIDENT" | "ADMIN" | "TREASURER" | "SUPERADMIN";
+    full_name?: string;
+    building?: string;
+    floor?: string;
+    apartment?: string;
+  }
+) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await fetch(`${API_BASE}/admin/users`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to create user");
+  }
+
+  return res.json();
+}
