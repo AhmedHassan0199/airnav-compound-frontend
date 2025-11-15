@@ -109,7 +109,7 @@ export default function AdminDashboardPage() {
       const data = await adminGetResidentInvoices(token, res.id);
       setInvoices(data.invoices || []);
     } catch (err: any) {
-      setError(err.message || "حدث خطأ أثناء تحميل الفواتير");
+      setError(err.message || "حدث خطأ أثناء تحميل الايصالات");
     } finally {
       setLoading(false);
     }
@@ -117,7 +117,7 @@ export default function AdminDashboardPage() {
 
   async function handleDeleteInvoice(inv: Invoice) {
     const confirmDelete = window.confirm(
-      `هل أنت متأكد من حذف فاتورة شهر ${inv.month}/${inv.year}؟`
+      `هل أنت متأكد من حذفايصال شهر ${inv.month}/${inv.year}؟`
     );
     if (!confirmDelete) return;
 
@@ -136,18 +136,18 @@ export default function AdminDashboardPage() {
         setNotes("");
       }
     } catch (err: any) {
-      alert(err.message || "تعذر حذف الفاتورة");
+      alert(err.message || "تعذر حذف الايصال");
     }
   }
 
   async function submitNewInvoice(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedResident) {
-      alert("برجاء اختيار ساكن أولاً قبل إنشاء فاتورة.");
+      alert("برجاء اختيار ساكن أولاً قبل إنشاءايصال.");
       return;
     }
     if (!newMonth || !newYear || !newAmount) {
-      alert("برجاء إدخال الشهر والسنة وقيمة الفاتورة.");
+      alert("برجاء إدخال الشهر والسنة وقيمة الايصال.");
       return;
     }
 
@@ -172,7 +172,7 @@ export default function AdminDashboardPage() {
       setNewNotes("");
       // نسيب الشهر/السنة زي ما هما عشان تفضل سريعة لو نفس الفترة
     } catch (err: any) {
-      alert(err.message || "تعذر إنشاء الفاتورة");
+      alert(err.message || "تعذر إنشاء الايصال");
     } finally {
       setNewSaving(false);
     }
@@ -247,7 +247,7 @@ export default function AdminDashboardPage() {
               لوحة تحصيل الصيانة (الإدارة)
             </h1>
             <p className="text-sm text-slate-600">
-              ابحث عن السكان، استعرض الفواتير، وسجّل التحصيلات النقدية.
+              ابحث عن السكان، استعرض الايصالات، وسجّل التحصيلات النقدية.
             </p>
           </div>
         </div>
@@ -321,8 +321,8 @@ export default function AdminDashboardPage() {
                         }
                       >
                         {res.unpaid_invoices_count > 0
-                          ? `${res.unpaid_invoices_count} فواتير غير مسددة`
-                          : "لا توجد فواتير مستحقة"}
+                          ? `${res.unpaid_invoices_count} ايصالات غير مسددة`
+                          : "لا توجد ايصالات مستحقة"}
                       </span>
                     </div>
                   </button>
@@ -336,19 +336,19 @@ export default function AdminDashboardPage() {
             {/* Invoices */}
             <div className="bg-white rounded-xl shadow-sm p-3">
               <h2 className="text-sm font-semibold text-slate-800 mb-2">
-                فواتير الساكن
+                ايصالات الساكن
               </h2>
               {!selectedResident ? (
                 <p className="text-sm text-slate-600">
-                  اختر ساكناً من القائمة على اليمين لعرض فواتيره.
+                  اختر ساكناً من القائمة على اليمين لعرض ايصالاته.
                 </p>
               ) : loading && invoices.length === 0 ? (
                 <p className="text-sm text-slate-600">
-                  جارٍ تحميل فواتير {selectedResident.person.full_name}...
+                  جارٍ تحميل ايصالات {selectedResident.person.full_name}...
                 </p>
               ) : invoices.length === 0 ? (
                 <p className="text-sm text-slate-600">
-                  لا توجد فواتير مسجلة لهذا الساكن.
+                  لا توجد ايصالات مسجلة لهذا الساكن.
                 </p>
               ) : (
                 <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
@@ -401,7 +401,7 @@ export default function AdminDashboardPage() {
                               onClick={() => startCollect(inv)}
                               className="text-xs px-3 py-1.5 rounded-lg bg-brand-cyan text-white hover:opacity-90"
                             >
-                              تسجيل تحصيل هذه الفاتورة
+                              تسجيل تحصيل هذا الايصال
                             </button>
                           )}
                           {!isPaid && (
@@ -409,7 +409,7 @@ export default function AdminDashboardPage() {
                               onClick={() => handleDeleteInvoice(inv)}
                               className="text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 border border-red-200 hover:bg-red-50"
                             >
-                              حذف الفاتورة
+                              حذف الايصال
                             </button>
                           )}
                         </div>
@@ -427,7 +427,7 @@ export default function AdminDashboardPage() {
               </h2>
               {!selectedResident || !collectingInvoice ? (
                 <p className="text-sm text-slate-600">
-                  اختر ساكناً، ثم اختر فاتورة غير مسددة لتسجيل التحصيل.
+                  اختر ساكناً، ثم اخترايصال غير مسددة لتسجيل التحصيل.
                 </p>
               ) : (
                 <form
@@ -442,7 +442,7 @@ export default function AdminDashboardPage() {
                       </span>
                     </div>
                     <div className="text-xs text-slate-600">
-                      فاتورة شهر {collectingInvoice.month}/
+                     ايصال شهر {collectingInvoice.month}/
                       {collectingInvoice.year}
                     </div>
                   </div>
@@ -479,7 +479,7 @@ export default function AdminDashboardPage() {
                     disabled={saving}
                     className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
                   >
-                    {saving ? "جارٍ الحفظ..." : "تسجيل التحصيل واعتبار الفاتورة مسددة"}
+                    {saving ? "جارٍ الحفظ..." : "تسجيل التحصيل واعتبار الايصال مسددة"}
                   </button>
                 </form>
               )}
@@ -487,11 +487,11 @@ export default function AdminDashboardPage() {
             {/* New invoice form */}
             <div className="bg-white rounded-xl shadow-sm p-3">
               <h2 className="text-sm font-semibold text-slate-800 mb-2">
-                إنشاء فاتورة صيانة جديدة
+                إنشاءايصال صيانة جديدة
               </h2>
               {!selectedResident ? (
                 <p className="text-sm text-slate-600">
-                  اختر ساكناً من القائمة لإنشاء فاتورة جديدة له.
+                  اختر ساكناً من القائمة لإنشاءايصال جديدة له.
                 </p>
               ) : (
                 <form
@@ -508,7 +508,7 @@ export default function AdminDashboardPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block mb-1 text-slate-700">
-                        شهر الفاتورة
+                        شهر الايصال
                       </label>
                       <select
                         className="w-full border rounded-lg px-3 py-2 text-right"
@@ -533,7 +533,7 @@ export default function AdminDashboardPage() {
                     </div>
                     <div>
                       <label className="block mb-1 text-slate-700">
-                        سنة الفاتورة
+                        سنة الايصال
                       </label>
                       <input
                         type="number"
@@ -547,7 +547,7 @@ export default function AdminDashboardPage() {
 
                   <div>
                     <label className="block mb-1 text-slate-700">
-                      قيمة الفاتورة (جنيه)
+                      قيمة الايصال (جنيه)
                     </label>
                     <input
                       type="number"
@@ -589,7 +589,7 @@ export default function AdminDashboardPage() {
                     disabled={newSaving}
                     className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
                   >
-                    {newSaving ? "جارٍ الحفظ..." : "إنشاء الفاتورة"}
+                    {newSaving ? "جارٍ الحفظ..." : "إنشاء الايصال"}
                   </button>
                 </form>
               )}
