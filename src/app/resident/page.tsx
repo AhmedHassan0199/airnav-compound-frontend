@@ -30,8 +30,8 @@ type Invoice = {
 };
 
 function formatStatus(status: string) {
-  if (status === "PAID") return "مسددة";
-  if (status === "PENDING") return "غير مسددة";
+  if (status === "PAID") return "مسدد";
+  if (status === "PENDING") return "غير مسدد";
   if (status === "OVERDUE") return "متأخرة";
   return status;
 }
@@ -51,7 +51,7 @@ async function downloadInvoicePdf(invoiceId: number, year: number, month: number
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    alert(data.message || "تعذر تحميل ملف الايصال.");
+    alert(data.message || "تعذر تحميل ملف ال ايصال.");
     return;
   }
 
@@ -59,7 +59,7 @@ async function downloadInvoicePdf(invoiceId: number, year: number, month: number
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `ايصال-صيانة-${year}-${month}.pdf`;
+  link.download = ` ايصال-صيانة-${year}-${month}.pdf`;
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -106,11 +106,11 @@ function InvoiceCard({ invoice }: { invoice: Invoice }) {
           }
           className="mt-1 self-start text-xs px-3 py-1.5 rounded-lg bg-brand-cyan text-white hover:opacity-90"
         >
-          تحميل الايصال PDF
+          تحميل ال ايصال PDF
         </button>
       ) : (
         <p className="mt-1 text-[11px] text-slate-500">
-          لا يمكن تحميل الايصال قبل سدادها.
+          لا يمكن تحميل ال ايصال قبل سدادها.
         </p>
       )}
     </div>
@@ -203,12 +203,12 @@ export default function ResidentPage() {
       {/* Invoices cards */}
       <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
         <h2 className="text-sm font-semibold text-slate-800 mb-2">
-          ايصالات الصيانة الشهرية
+           ايصالات الصيانة الشهرية
         </h2>
 
         {invoices.length === 0 ? (
           <p className="text-sm text-slate-600">
-            لا توجد ايصالات مسجلة حتى الآن.
+            لا توجد  ايصالات مسجلة حتى الآن.
           </p>
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
@@ -219,7 +219,7 @@ export default function ResidentPage() {
         )}
 
         <p className="text-[11px] text-slate-500 mt-1">
-          يمكنك تحميل ملف PDF لكلايصال لاستخدامه في الأرشفة أو الطباعة.
+          يمكنك تحميل ملف PDF لكل ايصال لاستخدامه في الأرشفة أو الطباعة.
         </p>
       </div>
       </div>
