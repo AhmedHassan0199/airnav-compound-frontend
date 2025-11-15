@@ -682,7 +682,7 @@ export default function AdminDashboardPage() {
 
                   <div>
                     <label className="block mb-1 text-slate-700">
-                      تاريخ الاستحقاق (اختياري)
+                      تاريخ الاستحقاق 
                     </label>
                     <input
                       type="date"
