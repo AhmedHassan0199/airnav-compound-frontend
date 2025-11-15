@@ -58,3 +58,74 @@ export async function getResidentInvoices(token: string | null) {
 
   return res.json();
 }
+
+export async function adminSearchResidents(
+  token: string | null,
+  query: string
+) {
+  if (!token) throw new Error("Missing token");
+
+  const url = `${API_BASE}/admin/residents?query=${encodeURIComponent(query)}`;
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to load residents");
+  }
+
+  return res.json();
+}
+
+export async function adminGetResidentInvoices(
+  token: string | null,
+  userId: number
+) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await fetch(`${API_BASE}/admin/residents/${userId}/invoices`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to load invoices");
+  }
+
+  return res.json();
+}
+
+export async function adminCollectPayment(
+  token: string | null,
+  payload: {
+    user_id: number;
+    invoice_id: number;
+    amount: number;
+    method?: string;
+    notes?: string;
+  }
+) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await fetch(`${API_BASE}/admin/collect`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to record payment");
+  }
+
+  return res.json();
+}
+
