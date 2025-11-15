@@ -73,13 +73,7 @@ export default function TreasurerPage() {
     if (typeof window === "undefined") return;
 
     loadAdmins();
-    useEffect(() => {
-      if (authLoading) return;
-      if (typeof window === "undefined") return;
-
-      loadAdmins();
-      loadSummary();
-    }, [authLoading]);
+    loadSummary();
   }, [authLoading]);
 
   async function loadAdmins() {
