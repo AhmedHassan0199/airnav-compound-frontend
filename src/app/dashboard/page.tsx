@@ -276,7 +276,7 @@ export default function AdminDashboardPage() {
       await adminCollectPayment(token, {
         user_id: selectedResident.id,
         invoice_id: collectingInvoice.id,
-        amount: parseFloat(amount),
+        amount: collectingInvoice.amount,
         method: "CASH",
         notes: notes || undefined,
       });
@@ -573,14 +573,20 @@ export default function AdminDashboardPage() {
                       المبلغ المحصل (جنيه)
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      className="w-full border rounded-lg px-3 py-2 text-right"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      required
+                      type="text"
+                      className="w-full border rounded-lg px-3 py-2 text-right bg-slate-100 cursor-not-allowed"
+                      value={
+                        collectingInvoice
+                          ? collectingInvoice.amount.toFixed(2)
+                          : ""
+                      }
+                      readOnly
                     />
+                    <p className="text-xs text-slate-500 mt-1">
+                      قيمة الفاتورة ثابتة ولا يمكن تعديلها من شاشة التحصيل.
+                    </p>
                   </div>
+
 
                   <div>
                     <label className="block mb-1 text-slate-700">
