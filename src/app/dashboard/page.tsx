@@ -68,11 +68,13 @@ export default function AdminDashboardPage() {
   );
 
   // Admin profile summary
-  const [profile, setProfile] = useState<{
+    const [profile, setProfile] = useState<{
     total_amount: number;
     payments_count: number;
     today_amount: number;
     today_count: number;
+    settled_amount: number;
+    outstanding_amount: number;
     recent_payments: {
       id: number;
       amount: number;
@@ -85,6 +87,7 @@ export default function AdminDashboardPage() {
       month: number;
     }[];
   } | null>(null);
+
 
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -137,7 +140,7 @@ export default function AdminDashboardPage() {
       const data = await adminGetResidentInvoices(token, res.id);
       setInvoices(data.invoices || []);
     } catch (err: any) {
-      setError(err.message || "حدث خطأ أثناء تحميل ال ايصالات");
+      setError(err.message || "حدث خطأ أثناء تحميل الايصالات");
     } finally {
       setLoading(false);
     }
@@ -326,7 +329,7 @@ export default function AdminDashboardPage() {
               لوحة تحصيل الصيانة (الإدارة)
             </h1>
             <p className="text-sm text-slate-600">
-              ابحث عن السكان، استعرض ال ايصالات، وسجّل التحصيلات النقدية.
+              ابحث عن السكان، استعرض الايصالات، وسجّل التحصيلات النقدية.
             </p>
           </div>
         </div>
@@ -865,6 +868,25 @@ export default function AdminDashboardPage() {
                         {profile.total_amount.toFixed(2)} جنيه
                       </div>
                     </div>
+
+                    <div className="border rounded-lg p-3 bg-slate-50">
+                      <div className="text-xs text-slate-600">
+                        المبالغ المسددة للخزينة
+                      </div>
+                      <div className="text-lg font-bold text-slate-800 mt-1">
+                        {profile.settled_amount.toFixed(2)} جنيه
+                      </div>
+                    </div>
+
+                    <div className="border rounded-lg p-3 bg-slate-50">
+                      <div className="text-xs text-slate-600">
+                        الرصيد المطلوب تسويته
+                      </div>
+                      <div className="text-lg font-bold mt-1 text-orange-700">
+                        {profile.outstanding_amount.toFixed(2)} جنيه
+                      </div>
+                    </div>
+
                     <div className="border rounded-lg p-3 bg-slate-50">
                       <div className="text-xs text-slate-600">
                         عدد الفواتير المحصلة
@@ -873,23 +895,8 @@ export default function AdminDashboardPage() {
                         {profile.payments_count}
                       </div>
                     </div>
-                    <div className="border rounded-lg p-3 bg-slate-50">
-                      <div className="text-xs text-slate-600">
-                        تحصيل اليوم (جنيه)
-                      </div>
-                      <div className="text-lg font-bold text-slate-800 mt-1">
-                        {profile.today_amount.toFixed(2)}
-                      </div>
-                    </div>
-                    <div className="border rounded-lg p-3 bg-slate-50">
-                      <div className="text-xs text-slate-600">
-                        عدد التحصيلات اليوم
-                      </div>
-                      <div className="text-lg font-bold text-slate-800 mt-1">
-                        {profile.today_count}
-                      </div>
-                    </div>
                   </div>
+
 
                   {/* Recent payments */}
                   <div>
