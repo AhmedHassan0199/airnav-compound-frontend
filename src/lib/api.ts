@@ -197,3 +197,66 @@ export async function adminGetMySummary(token: string | null) {
   return res.json();
 }
 
+export async function treasurerGetAdmins(token: string | null) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await fetch(`${API_BASE}/treasurer/admins`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to load admins for treasurer");
+  }
+
+  return res.json();
+}
+
+export async function treasurerGetAdminDetails(
+  token: string | null,
+  adminId: number
+) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await fetch(`${API_BASE}/treasurer/admins/${adminId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to load admin details");
+  }
+
+  return res.json();
+}
+
+export async function treasurerCreateSettlement(
+  token: string | null,
+  payload: {
+    admin_id: number;
+    amount: number;
+    notes?: string;
+  }
+) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await fetch(`${API_BASE}/treasurer/settlements`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to record settlement");
+  }
+
+  return res.json();
+}
