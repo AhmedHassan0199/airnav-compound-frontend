@@ -129,3 +129,53 @@ export async function adminCollectPayment(
   return res.json();
 }
 
+export async function adminCreateInvoice(
+  token: string | null,
+  payload: {
+    user_id: number;
+    year: number;
+    month: number;
+    amount: number;
+    due_date?: string;
+    notes?: string;
+  }
+) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await fetch(`${API_BASE}/admin/invoices`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to create invoice");
+  }
+
+  return res.json();
+}
+
+export async function adminDeleteInvoice(
+  token: string | null,
+  invoiceId: number
+) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await fetch(`${API_BASE}/admin/invoices/${invoiceId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to delete invoice");
+  }
+
+  return res.json();
+}

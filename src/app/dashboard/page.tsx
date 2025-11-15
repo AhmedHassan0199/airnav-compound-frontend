@@ -6,6 +6,8 @@ import {
   adminSearchResidents,
   adminGetResidentInvoices,
   adminCollectPayment,
+  adminCreateInvoice, 
+  adminDeleteInvoice,      
 } from "@/lib/api";
 
 type Resident = {
@@ -52,6 +54,13 @@ export default function AdminDashboardPage() {
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+    // New invoice form state
+  const [newMonth, setNewMonth] = useState<string>("");
+  const [newYear, setNewYear] = useState<string>(new Date().getFullYear().toString());
+  const [newAmount, setNewAmount] = useState<string>("");
+  const [newDueDate, setNewDueDate] = useState<string>("");
+  const [newNotes, setNewNotes] = useState<string>("");
+  const [newSaving, setNewSaving] = useState(false);
 
   // Load initial residents
   useEffect(() => {
@@ -103,6 +112,69 @@ export default function AdminDashboardPage() {
       setError(err.message || "حدث خطأ أثناء تحميل الفواتير");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleDeleteInvoice(inv: Invoice) {
+    const confirmDelete = window.confirm(
+      `هل أنت متأكد من حذف فاتورة شهر ${inv.month}/${inv.year}؟`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      const token = localStorage.getItem("access_token");
+      await adminDeleteInvoice(token, inv.id);
+
+      if (selectedResident) {
+        const data = await adminGetResidentInvoices(token, selectedResident.id);
+        setInvoices(data.invoices || []);
+      }
+
+      if (collectingInvoice && collectingInvoice.id === inv.id) {
+        setCollectingInvoice(null);
+        setAmount("");
+        setNotes("");
+      }
+    } catch (err: any) {
+      alert(err.message || "تعذر حذف الفاتورة");
+    }
+  }
+
+  async function submitNewInvoice(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedResident) {
+      alert("برجاء اختيار ساكن أولاً قبل إنشاء فاتورة.");
+      return;
+    }
+    if (!newMonth || !newYear || !newAmount) {
+      alert("برجاء إدخال الشهر والسنة وقيمة الفاتورة.");
+      return;
+    }
+
+    try {
+      setNewSaving(true);
+      const token = localStorage.getItem("access_token");
+
+      await adminCreateInvoice(token, {
+        user_id: selectedResident.id,
+        year: parseInt(newYear, 10),
+        month: parseInt(newMonth, 10),
+        amount: parseFloat(newAmount),
+        due_date: newDueDate || undefined,
+        notes: newNotes || undefined,
+      });
+
+      const data = await adminGetResidentInvoices(token, selectedResident.id);
+      setInvoices(data.invoices || []);
+
+      setNewAmount("");
+      setNewDueDate("");
+      setNewNotes("");
+      // نسيب الشهر/السنة زي ما هما عشان تفضل سريعة لو نفس الفترة
+    } catch (err: any) {
+      alert(err.message || "تعذر إنشاء الفاتورة");
+    } finally {
+      setNewSaving(false);
     }
   }
 
@@ -323,14 +395,24 @@ export default function AdminDashboardPage() {
                           <span>{inv.paid_date || "-"}</span>
                         </div>
 
-                        {!isPaid && (
-                          <button
-                            onClick={() => startCollect(inv)}
-                            className="mt-2 text-xs px-3 py-1.5 rounded-lg bg-brand-cyan text-white hover:opacity-90"
-                          >
-                            تسجيل تحصيل هذه الفاتورة
-                          </button>
-                        )}
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {!isPaid && (
+                            <button
+                              onClick={() => startCollect(inv)}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-brand-cyan text-white hover:opacity-90"
+                            >
+                              تسجيل تحصيل هذه الفاتورة
+                            </button>
+                          )}
+                          {!isPaid && (
+                            <button
+                              onClick={() => handleDeleteInvoice(inv)}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 border border-red-200 hover:bg-red-50"
+                            >
+                              حذف الفاتورة
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -398,6 +480,116 @@ export default function AdminDashboardPage() {
                     className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
                   >
                     {saving ? "جارٍ الحفظ..." : "تسجيل التحصيل واعتبار الفاتورة مسددة"}
+                  </button>
+                </form>
+              )}
+            </div>
+            {/* New invoice form */}
+            <div className="bg-white rounded-xl shadow-sm p-3">
+              <h2 className="text-sm font-semibold text-slate-800 mb-2">
+                إنشاء فاتورة صيانة جديدة
+              </h2>
+              {!selectedResident ? (
+                <p className="text-sm text-slate-600">
+                  اختر ساكناً من القائمة لإنشاء فاتورة جديدة له.
+                </p>
+              ) : (
+                <form
+                  onSubmit={submitNewInvoice}
+                  className="space-y-3 text-sm max-w-md"
+                >
+                  <div className="text-slate-700">
+                    الساكن:{" "}
+                    <span className="font-semibold">
+                      {selectedResident.person.full_name}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block mb-1 text-slate-700">
+                        شهر الفاتورة
+                      </label>
+                      <select
+                        className="w-full border rounded-lg px-3 py-2 text-right"
+                        value={newMonth}
+                        onChange={(e) => setNewMonth(e.target.value)}
+                        required
+                      >
+                        <option value="">اختر الشهر</option>
+                        <option value="1">يناير</option>
+                        <option value="2">فبراير</option>
+                        <option value="3">مارس</option>
+                        <option value="4">أبريل</option>
+                        <option value="5">مايو</option>
+                        <option value="6">يونيو</option>
+                        <option value="7">يوليو</option>
+                        <option value="8">أغسطس</option>
+                        <option value="9">سبتمبر</option>
+                        <option value="10">أكتوبر</option>
+                        <option value="11">نوفمبر</option>
+                        <option value="12">ديسمبر</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block mb-1 text-slate-700">
+                        سنة الفاتورة
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full border rounded-lg px-3 py-2 text-right"
+                        value={newYear}
+                        onChange={(e) => setNewYear(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block mb-1 text-slate-700">
+                      قيمة الفاتورة (جنيه)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="w-full border rounded-lg px-3 py-2 text-right"
+                      value={newAmount}
+                      onChange={(e) => setNewAmount(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block mb-1 text-slate-700">
+                      تاريخ الاستحقاق (اختياري)
+                    </label>
+                    <input
+                      type="date"
+                      className="w-full border rounded-lg px-3 py-2 text-right"
+                      value={newDueDate}
+                      onChange={(e) => setNewDueDate(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block mb-1 text-slate-700">
+                      ملاحظات (اختياري)
+                    </label>
+                    <textarea
+                      className="w-full border rounded-lg px-3 py-2 text-right text-sm"
+                      rows={2}
+                      value={newNotes}
+                      onChange={(e) => setNewNotes(e.target.value)}
+                      placeholder="مثال: قيمة الصيانة لهذا الشهر بعد زيادة الجمعية."
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={newSaving}
+                    className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
+                  >
+                    {newSaving ? "جارٍ الحفظ..." : "إنشاء الفاتورة"}
                   </button>
                 </form>
               )}
