@@ -310,3 +310,59 @@ export async function treasurerGetSummary(token: string | null) {
   return res.json();
 }
 
+export async function treasurerCreateExpense(
+  token: string | null,
+  payload: { amount: number; description: string; category?: string }
+) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await fetch(`${API_BASE}/treasurer/expenses`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to record expense");
+  }
+
+  return res.json();
+}
+
+export async function treasurerGetExpenses(token: string | null) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await fetch(`${API_BASE}/treasurer/expenses`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to load expenses");
+  }
+
+  return res.json();
+}
+
+export async function treasurerGetLedger(token: string | null) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await fetch(`${API_BASE}/treasurer/ledger?limit=50`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to load ledger");
+  }
+
+  return res.json();
+}

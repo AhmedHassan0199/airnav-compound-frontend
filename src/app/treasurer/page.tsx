@@ -7,7 +7,10 @@ import {
   treasurerGetAdmins,
   treasurerGetAdminDetails,
   treasurerCreateSettlement,
-  treasurerGetSummary
+  treasurerGetSummary,
+  treasurerCreateExpense,
+  treasurerGetExpenses,
+  treasurerGetLedger,
 } from "@/lib/api";
 
 type AdminSummary = {
@@ -40,6 +43,26 @@ type AdminDetails = {
   }[];
 };
 
+type ExpenseItem = {
+  id: number;
+  date: string;
+  amount: number;
+  category: string | null;
+  description: string;
+  created_by: string;
+};
+
+type LedgerEntry = {
+  id: number;
+  date: string;
+  description: string;
+  debit: number;
+  credit: number;
+  balance_after: number;
+  entry_type: string;
+  created_by: string;
+};
+
 export default function TreasurerPage() {
   const { user, loading: authLoading } = useRequireAuth(["TREASURER"]);
 
@@ -51,16 +74,16 @@ export default function TreasurerPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [summary, setSummary] = useState<{
-  total_collected: number;
-  total_settled: number;
-  union_balance: number;
-  today_collected: number;
-  this_month_collected: number;
-  total_invoices: number;
-  paid_invoices: number;
-  unpaid_invoices: number;
+    total_collected: number;
+    total_settled: number;
+    union_balance: number;
+    today_collected: number;
+    this_month_collected: number;
+    total_invoices: number;
+    paid_invoices: number;
+    unpaid_invoices: number;
   } | null>(null);
 
   // Settlement form
@@ -68,12 +91,27 @@ export default function TreasurerPage() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Expenses
+  const [expenseAmount, setExpenseAmount] = useState("");
+  const [expenseCategory, setExpenseCategory] = useState("");
+  const [expenseDescription, setExpenseDescription] = useState("");
+  const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
+  const [expenseError, setExpenseError] = useState<string | null>(null);
+  const [expenseSaving, setExpenseSaving] = useState(false);
+
+  // Ledger
+  const [ledger, setLedger] = useState<LedgerEntry[]>([]);
+  const [ledgerError, setLedgerError] = useState<string | null>(null);
+
+  // Load initial data
   useEffect(() => {
     if (authLoading) return;
     if (typeof window === "undefined") return;
 
     loadAdmins();
     loadSummary();
+    loadExpenses();
+    loadLedger();
   }, [authLoading]);
 
   async function loadAdmins() {
@@ -90,15 +128,38 @@ export default function TreasurerPage() {
       setLoading(false);
     }
   }
+
   async function loadSummary() {
-  try {
-    const token = localStorage.getItem("access_token");
-    const data = await treasurerGetSummary(token);
-    setSummary(data);
-  } catch (err) {
-    // optional: ignore or show a small message
+    try {
+      const token = localStorage.getItem("access_token");
+      const data = await treasurerGetSummary(token);
+      setSummary(data);
+    } catch (err) {
+      // ممكن لاحقاً نعرض رسالة صغيرة
+    }
   }
-}
+
+  async function loadExpenses() {
+    try {
+      setExpenseError(null);
+      const token = localStorage.getItem("access_token");
+      const data = await treasurerGetExpenses(token);
+      setExpenses(data);
+    } catch (err: any) {
+      setExpenseError(err.message || "تعذر تحميل المصروفات");
+    }
+  }
+
+  async function loadLedger() {
+    try {
+      setLedgerError(null);
+      const token = localStorage.getItem("access_token");
+      const data = await treasurerGetLedger(token);
+      setLedger(data);
+    } catch (err: any) {
+      setLedgerError(err.message || "تعذر تحميل دفتر الاتحاد");
+    }
+  }
 
   function handleSearchChange(value: string) {
     setSearch(value);
@@ -175,7 +236,6 @@ export default function TreasurerPage() {
         notes: notes || undefined,
       });
 
-      // update details summary
       const newSummary = result.summary as AdminSummary;
 
       setDetails((prev) =>
@@ -187,7 +247,6 @@ export default function TreasurerPage() {
           : prev
       );
 
-      // also update admin in the list
       setAdmins((prev) =>
         prev.map((a) =>
           a.id === selectedAdmin.id ? { ...a, summary: newSummary } : a
@@ -199,7 +258,6 @@ export default function TreasurerPage() {
         )
       );
 
-      // reset form
       setNotes("");
       const newOutstanding = newSummary.outstanding_amount;
       if (newOutstanding > 0) {
@@ -208,9 +266,12 @@ export default function TreasurerPage() {
         setAmount("");
       }
 
-      // Reload details to get latest settlements list
       const data = await treasurerGetAdminDetails(token, selectedAdmin.id);
       setDetails(data);
+
+      // بعد كل تسوية: نحدّث الملخص + الدفتر
+      loadSummary();
+      loadLedger();
     } catch (err: any) {
       alert(err.message || "تعذر تسجيل التسوية");
     } finally {
@@ -218,9 +279,51 @@ export default function TreasurerPage() {
     }
   }
 
+  async function submitExpense(e: React.FormEvent) {
+    e.preventDefault();
+    if (!expenseAmount || !expenseDescription) {
+      setExpenseError("برجاء إدخال مبلغ المصروف والوصف.");
+      return;
+    }
+
+    const value = parseFloat(expenseAmount);
+    if (isNaN(value) || value <= 0) {
+      setExpenseError("برجاء إدخال مبلغ صحيح أكبر من صفر.");
+      return;
+    }
+
+    try {
+      setExpenseSaving(true);
+      setExpenseError(null);
+      const token = localStorage.getItem("access_token");
+
+      await treasurerCreateExpense(token, {
+        amount: value,
+        description: expenseDescription,
+        category: expenseCategory || undefined,
+      });
+
+      setExpenseAmount("");
+      setExpenseCategory("");
+      setExpenseDescription("");
+
+      // Reload expenses + summary + ledger
+      await loadExpenses();
+      await loadSummary();
+      await loadLedger();
+    } catch (err: any) {
+      setExpenseError(err.message || "تعذر تسجيل المصروف.");
+    } finally {
+      setExpenseSaving(false);
+    }
+  }
+
   if (authLoading) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-brand-beige" dir="rtl">
+      <main
+        className="min-h-screen flex items-center justify-center bg-brand-beige"
+        dir="rtl"
+      >
         <p className="text-sm text-slate-600">جارٍ التحقق من الجلسة...</p>
       </main>
     );
@@ -229,45 +332,51 @@ export default function TreasurerPage() {
   return (
     <main className="min-h-screen bg-brand-beige p-4" dir="rtl">
       <DashboardHeader title="لوحة تحكم أمين الصندوق" />
+
+      {/* Summary Cards */}
       {summary && (
-      <div className="max-w-6xl mx-auto mb-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-white rounded-lg shadow-sm p-3">
-            <div className="text-xs text-slate-600">رصيد الاتحاد الحالي</div>
-            <div className="text-lg font-bold text-slate-800 mt-1">
-              {summary.union_balance.toFixed(2)} جنيه
+        <div className="max-w-6xl mx-auto mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="bg-white rounded-lg shadow-sm p-3">
+              <div className="text-xs text-slate-600">رصيد الاتحاد الحالي</div>
+              <div className="text-lg font-bold text-slate-800 mt-1">
+                {summary.union_balance.toFixed(2)} جنيه
+              </div>
             </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm p-3">
-            <div className="text-xs text-slate-600">تحصيل شهر {new Date().getMonth() + 1}</div>
-            <div className="text-lg font-bold text-slate-800 mt-1">
-              {summary.this_month_collected.toFixed(2)} جنيه
+            <div className="bg-white rounded-lg shadow-sm p-3">
+              <div className="text-xs text-slate-600">
+                تحصيل شهر {new Date().getMonth() + 1}
+              </div>
+              <div className="text-lg font-bold text-slate-800 mt-1">
+                {summary.this_month_collected.toFixed(2)} جنيه
+              </div>
             </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm p-3">
-            <div className="text-xs text-slate-600">تحصيل اليوم</div>
-            <div className="text-lg font-bold text-slate-800 mt-1">
-              {summary.today_collected.toFixed(2)} جنيه
+            <div className="bg-white rounded-lg shadow-sm p-3">
+              <div className="text-xs text-slate-600">تحصيل اليوم</div>
+              <div className="text-lg font-bold text-slate-800 mt-1">
+                {summary.today_collected.toFixed(2)} جنيه
+              </div>
             </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm p-3">
-            <div className="text-xs text-slate-600">فواتير مدفوعة / إجمالي</div>
-            <div className="text-lg font-bold text-slate-800 mt-1">
-              {summary.paid_invoices} / {summary.total_invoices}
+            <div className="bg-white rounded-lg shadow-sm p-3">
+              <div className="text-xs text-slate-600">فواتير مدفوعة / إجمالي</div>
+              <div className="text-lg font-bold text-slate-800 mt-1">
+                {summary.paid_invoices} / {summary.total_invoices}
+              </div>
             </div>
           </div>
         </div>
-      </div>
       )}
+
       <div className="max-w-6xl mx-auto space-y-4">
-        {/* Header */}
+        {/* Header text */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-bold text-slate-800">
               لوحة أمين الصندوق
             </h1>
             <p className="text-sm text-slate-600">
-              استعرض أرصدة مسؤولي التحصيل، وسجّل التسويات النقدية معهم.
+              استعرض أرصدة مسؤولي التحصيل، وسجّل التسويات والمصروفات، وتابع دفتر
+              الاتحاد.
             </p>
           </div>
         </div>
@@ -326,7 +435,9 @@ export default function TreasurerPage() {
                       اسم المستخدم: {admin.username}
                     </div>
                     <div className="text-xs mt-1">
-                      <span className="text-slate-600">رصيد مطلوب تسويته: </span>
+                      <span className="text-slate-600">
+                        رصيد مطلوب تسويته:{" "}
+                      </span>
                       <span
                         className={
                           admin.summary.outstanding_amount > 0
@@ -427,7 +538,8 @@ export default function TreasurerPage() {
                           />
                           <p className="text-xs text-slate-500 mt-1">
                             لا يمكن أن يزيد عن الرصيد المطلوب تسويته (
-                            {details.summary.outstanding_amount.toFixed(2)} جنيه).
+                            {details.summary.outstanding_amount.toFixed(2)}{" "}
+                            جنيه).
                           </p>
                         </div>
                         <div>
@@ -494,6 +606,170 @@ export default function TreasurerPage() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* =====================  مصروفات الاتحاد  ===================== */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Expense form */}
+          <div className="bg-white rounded-xl shadow-sm p-3 space-y-3">
+            <h2 className="text-sm font-semibold text-slate-800 mb-1">
+              إضافة مصروف اتحاد جديد
+            </h2>
+            {expenseError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-2 mb-2">
+                {expenseError}
+              </div>
+            )}
+            <form
+              onSubmit={submitExpense}
+              className="space-y-3 text-sm max-w-md"
+            >
+              <div>
+                <label className="block mb-1 text-slate-700">
+                  المبلغ (جنيه)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="w-full border rounded-lg px-3 py-2 text-right"
+                  value={expenseAmount}
+                  onChange={(e) => setExpenseAmount(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-slate-700">
+                  التصنيف (اختياري)
+                </label>
+                <input
+                  type="text"
+                  className="w-full border rounded-lg px-3 py-2 text-right"
+                  value={expenseCategory}
+                  onChange={(e) => setExpenseCategory(e.target.value)}
+                  placeholder="مثال: نظافة، أمن، صيانة..."
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-slate-700">
+                  الوصف / البيان
+                </label>
+                <textarea
+                  className="w-full border rounded-lg px-3 py-2 text-right text-sm"
+                  rows={2}
+                  value={expenseDescription}
+                  onChange={(e) => setExpenseDescription(e.target.value)}
+                  placeholder="مثال: مصروف صيانة الأعمدة الكهربائية."
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={expenseSaving}
+                className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
+              >
+                {expenseSaving ? "جارٍ الحفظ..." : "تسجيل المصروف"}
+              </button>
+            </form>
+          </div>
+
+          {/* Expense list */}
+          <div className="bg-white rounded-xl shadow-sm p-3">
+            <h2 className="text-sm font-semibold text-slate-800 mb-2">
+              آخر المصروفات المسجلة
+            </h2>
+            {expenses.length === 0 ? (
+              <p className="text-sm text-slate-600">
+                لا توجد مصروفات مسجلة حتى الآن.
+              </p>
+            ) : (
+              <div className="max-h-[40vh] overflow-y-auto pr-1 text-xs sm:text-sm">
+                <table className="w-full text-right border-collapse">
+                  <thead>
+                    <tr className="border-b text-[11px] sm:text-xs text-slate-600">
+                      <th className="py-1">التاريخ</th>
+                      <th className="py-1">البيان</th>
+                      <th className="py-1">التصنيف</th>
+                      <th className="py-1">المبلغ</th>
+                      <th className="py-1">مسجّل بواسطة</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expenses.map((exp) => (
+                      <tr key={exp.id} className="border-b last:border-0">
+                        <td className="py-1 align-top">{exp.date}</td>
+                        <td className="py-1 align-top">{exp.description}</td>
+                        <td className="py-1 align-top">
+                          {exp.category || "-"}
+                        </td>
+                        <td className="py-1 align-top">
+                          {exp.amount.toFixed(2)}
+                        </td>
+                        <td className="py-1 align-top">{exp.created_by}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* =====================  دفتر الاتحاد (Ledger)  ===================== */}
+        <div className="bg-white rounded-xl shadow-sm p-3">
+          <h2 className="text-sm font-semibold text-slate-800 mb-2">
+            دفتر الاتحاد (قيود مالية)
+          </h2>
+          {ledgerError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-2 mb-2">
+              {ledgerError}
+            </div>
+          )}
+          {ledger.length === 0 ? (
+            <p className="text-sm text-slate-600">
+              لا توجد قيود مالية مسجلة حتى الآن.
+            </p>
+          ) : (
+            <div className="max-h-[50vh] overflow-y-auto pr-1 text-xs sm:text-sm">
+              <table className="w-full text-right border-collapse">
+                <thead>
+                  <tr className="border-b text-[11px] sm:text-xs text-slate-600">
+                    <th className="py-1">التاريخ</th>
+                    <th className="py-1">البيان</th>
+                    <th className="py-1">مدين</th>
+                    <th className="py-1">دائن</th>
+                    <th className="py-1">الرصيد بعد القيد</th>
+                    <th className="py-1">النوع</th>
+                    <th className="py-1">مسجّل بواسطة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledger.map((entry) => (
+                    <tr key={entry.id} className="border-b last:border-0">
+                      <td className="py-1 align-top">{entry.date}</td>
+                      <td className="py-1 align-top">{entry.description}</td>
+                      <td className="py-1 align-top">
+                        {entry.debit > 0 ? entry.debit.toFixed(2) : "-"}
+                      </td>
+                      <td className="py-1 align-top">
+                        {entry.credit > 0 ? entry.credit.toFixed(2) : "-"}
+                      </td>
+                      <td className="py-1 align-top">
+                        {entry.balance_after.toFixed(2)}
+                      </td>
+                      <td className="py-1 align-top">
+                        {entry.entry_type === "EXPENSE"
+                          ? "مصروف"
+                          : entry.entry_type === "SETTLEMENT"
+                          ? "تسوية مسؤول"
+                          : entry.entry_type}
+                      </td>
+                      <td className="py-1 align-top">{entry.created_by}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </main>
