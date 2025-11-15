@@ -384,3 +384,23 @@ export async function treasurerGetLateResidents(token: string | null) {
   return res.json();
 }
 
+export async function registerNotificationToken(token: string) {
+  const accessToken = localStorage.getItem("access_token");
+  if (!accessToken) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/notifications/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ token }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "فشل حفظ رمز الإشعارات");
+  }
+
+  return res.json();
+}
