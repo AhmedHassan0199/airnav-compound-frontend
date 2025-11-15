@@ -179,3 +179,21 @@ export async function adminDeleteInvoice(
 
   return res.json();
 }
+
+export async function adminGetMySummary(token: string | null) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await fetch(`${API_BASE}/admin/me/summary`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to load admin summary");
+  }
+
+  return res.json();
+}
+

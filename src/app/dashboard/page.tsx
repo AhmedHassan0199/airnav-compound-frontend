@@ -7,7 +7,8 @@ import {
   adminGetResidentInvoices,
   adminCollectPayment,
   adminCreateInvoice, 
-  adminDeleteInvoice,      
+  adminDeleteInvoice,
+  adminGetMySummary,
 } from "@/lib/api";
 
 type Resident = {
@@ -54,13 +55,40 @@ export default function AdminDashboardPage() {
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
-    // New invoice form state
+  // New invoice form state
   const [newMonth, setNewMonth] = useState<string>("");
   const [newYear, setNewYear] = useState<string>(new Date().getFullYear().toString());
   const [newAmount, setNewAmount] = useState<string>("");
   const [newDueDate, setNewDueDate] = useState<string>("");
   const [newNotes, setNewNotes] = useState<string>("");
   const [newSaving, setNewSaving] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<"collect" | "view" | "profile">(
+    "collect"
+  );
+
+  // Admin profile summary
+  const [profile, setProfile] = useState<{
+    total_amount: number;
+    payments_count: number;
+    today_amount: number;
+    today_count: number;
+    recent_payments: {
+      id: number;
+      amount: number;
+      created_at: string;
+      resident_name: string;
+      building: string;
+      floor: string;
+      apartment: string;
+      year: number;
+      month: number;
+    }[];
+  } | null>(null);
+
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
 
   // Load initial residents
   useEffect(() => {
@@ -112,6 +140,57 @@ export default function AdminDashboardPage() {
       setError(err.message || "حدث خطأ أثناء تحميل ال ايصالات");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function downloadInvoicePdf(inv: Invoice, residentName: string) {
+    try {
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        alert("برجاء تسجيل الدخول مرة أخرى.");
+        return;
+      }
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE}/resident/invoices/${inv.id}/pdf`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || "تعذر تحميل ملف الفاتورة.");
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `فاتورة-صيانة-${inv.year}-${inv.month}-${residentName}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e: any) {
+      alert("حدث خطأ أثناء تحميل الفاتورة.");
+    }
+  }
+
+  async function loadProfile() {
+    try {
+      setProfileError(null);
+      setProfileLoading(true);
+      const token = localStorage.getItem("access_token");
+      const data = await adminGetMySummary(token);
+      setProfile(data);
+    } catch (err: any) {
+      setProfileError(err.message || "حدث خطأ أثناء تحميل بيانات المسؤول");
+    } finally {
+      setProfileLoading(false);
     }
   }
 
@@ -251,6 +330,45 @@ export default function AdminDashboardPage() {
             </p>
           </div>
         </div>
+        
+        {/* Tabs */}
+        <div className="flex gap-2 mt-1">
+          <button
+            onClick={() => setActiveTab("collect")}
+            className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
+              activeTab === "collect"
+                ? "bg-brand-cyan text-white"
+                : "bg-white text-slate-700 border border-slate-200"
+            }`}
+          >
+            تحصيل الصيانة
+          </button>
+          <button
+            onClick={() => setActiveTab("view")}
+            className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
+              activeTab === "view"
+                ? "bg-brand-cyan text-white"
+                : "bg-white text-slate-700 border border-slate-200"
+            }`}
+          >
+            عرض الفواتير وطباعتها
+          </button>
+          <button
+            onClick={async () => {
+              setActiveTab("profile");
+              if (!profile) {
+                await loadProfile();
+              }
+            }}
+            className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
+              activeTab === "profile"
+                ? "bg-brand-cyan text-white"
+                : "bg-white text-slate-700 border border-slate-200"
+            }`}
+          >
+            ملفي كمسؤول تحصيل
+          </button>
+        </div>
 
         {/* Search */}
         <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
@@ -281,7 +399,8 @@ export default function AdminDashboardPage() {
         )}
 
         {/* Layout: Residents list (cards) + Invoices panel */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {activeTab === "collect"  && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">      
           {/* Residents column */}
           <div className="lg:col-span-1 bg-white rounded-xl shadow-sm p-3 space-y-3">
             <h2 className="text-sm font-semibold text-slate-800 mb-1">
@@ -330,7 +449,6 @@ export default function AdminDashboardPage() {
               </div>
             )}
           </div>
-
           {/* Invoices + Collect form */}
           <div className="lg:col-span-2 space-y-3">
             {/* Invoices */}
@@ -596,6 +714,230 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         </div>
+        )}
+        
+        {activeTab === "view" && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Residents column (same as before) */}
+            <div className="lg:col-span-1 bg-white rounded-xl shadow-sm p-3 space-y-3">
+              <h2 className="text-sm font-semibold text-slate-800 mb-1">
+                قائمة السكان
+              </h2>
+              {loading && residents.length === 0 ? (
+                <p className="text-sm text-slate-600">جارٍ تحميل السكان...</p>
+              ) : residents.length === 0 ? (
+                <p className="text-sm text-slate-600">
+                  لا توجد نتائج. جرّب تعديل بيانات البحث.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                  {residents.map((res) => (
+                    <button
+                      key={res.id}
+                      className={`w-full text-right border rounded-lg p-3 text-sm hover:bg-slate-50 transition ${
+                        selectedResident?.id === res.id
+                          ? "border-brand-cyan bg-slate-50"
+                          : "border-slate-200"
+                      }`}
+                      onClick={() => handleSelectResident(res)}
+                    >
+                      <div className="font-semibold text-slate-800">
+                        {res.person.full_name}
+                      </div>
+                      <div className="text-xs text-slate-600">
+                        مبنى {res.person.building} – دور {res.person.floor} – شقة{" "}
+                        {res.person.apartment}
+                      </div>
+                      <div className="text-xs mt-1 text-slate-600">
+                        اسم المستخدم: {res.username}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Invoices view-only + PDF */}
+            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-3">
+              <h2 className="text-sm font-semibold text-slate-800 mb-2">
+                فواتير الساكن (للعرض والطباعه)
+              </h2>
+              {!selectedResident ? (
+                <p className="text-sm text-slate-600">
+                  اختر ساكناً من القائمة لعرض فواتيره.
+                </p>
+              ) : loading && invoices.length === 0 ? (
+                <p className="text-sm text-slate-600">
+                  جارٍ تحميل فواتير {selectedResident.person.full_name}...
+                </p>
+              ) : invoices.length === 0 ? (
+                <p className="text-sm text-slate-600">
+                  لا توجد فواتير مسجلة لهذا الساكن.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                  {invoices.map((inv) => {
+                    const isPaid = inv.status === "PAID";
+                    const isOverdue = inv.status === "OVERDUE";
+                    return (
+                      <div
+                        key={inv.id}
+                        className="border rounded-lg p-3 text-sm bg-slate-50"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="font-semibold text-slate-800">
+                            شهر {inv.month}/{inv.year}
+                          </div>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-xs ${
+                              isPaid
+                                ? "bg-green-100 text-green-700"
+                                : isOverdue
+                                ? "bg-red-100 text-red-700"
+                                : "bg-amber-100 text-amber-700"
+                            }`}
+                          >
+                            {isPaid
+                              ? "مسددة"
+                              : isOverdue
+                              ? "متأخرة"
+                              : "غير مسددة"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          <span>القيمة:</span>
+                          <span className="font-semibold">
+                            {inv.amount.toFixed(2)} جنيه
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-slate-600 mt-1">
+                          <span>الاستحقاق:</span>
+                          <span>{inv.due_date || "-"}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-slate-600">
+                          <span>السداد:</span>
+                          <span>{inv.paid_date || "-"}</span>
+                        </div>
+
+                        {isPaid && selectedResident && (
+                          <button
+                            onClick={() =>
+                              downloadInvoicePdf(
+                                inv,
+                                selectedResident.person.full_name
+                              )
+                            }
+                            className="mt-2 text-xs px-3 py-1.5 rounded-lg bg-brand-cyan text-white hover:opacity-90"
+                          >
+                            طباعة / تحميل الفاتورة PDF
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "profile" && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-3 bg-white rounded-xl shadow-sm p-4">
+              <h2 className="text-sm font-semibold text-slate-800 mb-2">
+                ملخص مسؤول التحصيل
+              </h2>
+
+              {profileLoading && <p className="text-sm text-slate-600">جارٍ تحميل البيانات...</p>}
+              {profileError && (
+                <p className="text-sm text-red-600">{profileError}</p>
+              )}
+
+              {profile && !profileLoading && !profileError && (
+                <div className="space-y-4">
+                  {/* Summary cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="border rounded-lg p-3 bg-slate-50">
+                      <div className="text-xs text-slate-600">
+                        إجمالي المبالغ المحصلة
+                      </div>
+                      <div className="text-lg font-bold text-slate-800 mt-1">
+                        {profile.total_amount.toFixed(2)} جنيه
+                      </div>
+                    </div>
+                    <div className="border rounded-lg p-3 bg-slate-50">
+                      <div className="text-xs text-slate-600">
+                        عدد الفواتير المحصلة
+                      </div>
+                      <div className="text-lg font-bold text-slate-800 mt-1">
+                        {profile.payments_count}
+                      </div>
+                    </div>
+                    <div className="border rounded-lg p-3 bg-slate-50">
+                      <div className="text-xs text-slate-600">
+                        تحصيل اليوم (جنيه)
+                      </div>
+                      <div className="text-lg font-bold text-slate-800 mt-1">
+                        {profile.today_amount.toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="border rounded-lg p-3 bg-slate-50">
+                      <div className="text-xs text-slate-600">
+                        عدد التحصيلات اليوم
+                      </div>
+                      <div className="text-lg font-bold text-slate-800 mt-1">
+                        {profile.today_count}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recent payments */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                      آخر التحصيلات
+                    </h3>
+                    {profile.recent_payments.length === 0 ? (
+                      <p className="text-sm text-slate-600">
+                        لا توجد تحصيلات مسجلة حتى الآن.
+                      </p>
+                    ) : (
+                      <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1 text-sm">
+                        {profile.recent_payments.map((p) => (
+                          <div
+                            key={p.id}
+                            className="border rounded-lg p-3 bg-slate-50"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-slate-800">
+                                {p.resident_name}
+                              </span>
+                              <span className="text-xs text-slate-600">
+                                {p.created_at}
+                              </span>
+                            </div>
+                            <div className="text-xs text-slate-600 mt-1">
+                              مبنى {p.building} – دور {p.floor} – شقة{" "}
+                              {p.apartment}
+                            </div>
+                            <div className="flex items-center justify-between mt-1">
+                              <span>
+                                فاتورة شهر {p.month}/{p.year}
+                              </span>
+                              <span className="font-semibold">
+                                {p.amount.toFixed(2)} جنيه
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
       </div>
     </main>
   );
