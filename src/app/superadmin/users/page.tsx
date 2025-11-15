@@ -23,6 +23,7 @@ export default function SuperadminUsersPage() {
   const [building, setBuilding] = useState("");
   const [floor, setFloor] = useState("");
   const [apartment, setApartment] = useState("");
+  const [phone, setPhone] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +62,7 @@ export default function SuperadminUsersPage() {
         building: building || undefined,
         floor: floor || undefined,
         apartment: apartment || undefined,
+        phone: phone || undefined,
       });
 
       setSuccess("تم إنشاء المستخدم بنجاح.");
@@ -70,6 +72,7 @@ export default function SuperadminUsersPage() {
       setBuilding("");
       setFloor("");
       setApartment("");
+      setPhone("");
     } catch (err: any) {
       setError(err.message || "تعذر إنشاء المستخدم.");
     } finally {
@@ -161,6 +164,19 @@ export default function SuperadminUsersPage() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="مثال: أحمد حسن عز الدين"
+              />
+            </div>
+
+            <div>
+              <label className="block mb-1 text-slate-700">
+                رقم الموبايل (مع كود الدولة)
+              </label>
+              <input
+                type="text"
+                className="w-full border rounded-lg px-3 py-2 text-right"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="مثال: +201001234567"
               />
             </div>
 
