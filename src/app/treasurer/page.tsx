@@ -1,5 +1,6 @@
 "use client";
 
+import DashboardHeader from "@/components/DashboardHeader";
 import { useEffect, useState } from "react";
 import { useRequireAuth } from "@/lib/auth";
 import {
@@ -205,6 +206,7 @@ export default function TreasurerPage() {
 
   return (
     <main className="min-h-screen bg-brand-beige p-4" dir="rtl">
+      <DashboardHeader title="لوحة تحكم أمين الصندوق" />
       <div className="max-w-6xl mx-auto space-y-4">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">

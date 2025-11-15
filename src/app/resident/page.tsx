@@ -1,5 +1,6 @@
 "use client";
 
+import DashboardHeader from "@/components/DashboardHeader";
 import { useEffect, useState } from "react";
 import { useRequireAuth } from "@/lib/auth";
 import { getResidentProfile, getResidentInvoices, API_BASE } from "@/lib/api";
@@ -181,6 +182,7 @@ export default function ResidentPage() {
 
   return (
     <main className="min-h-screen p-4 bg-brand-beige" dir="rtl">
+      <DashboardHeader title="حساب الساكن" />
       <div className="max-w-3xl mx-auto space-y-4">
         {/* Header / Profile card */}
         <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col sm:flex-row justify-between gap-3">

@@ -1,5 +1,6 @@
 "use client";
 
+import DashboardHeader from "@/components/DashboardHeader";
 import { useState } from "react";
 import { useRequireAuth } from "@/lib/auth";
 import { superadminCreateUser } from "@/lib/api";
@@ -78,6 +79,7 @@ export default function SuperadminUsersPage() {
 
   return (
     <main className="min-h-screen bg-brand-beige p-4" dir="rtl">
+      <DashboardHeader title="إدارة المستخدمين" />
       <div className="max-w-xl mx-auto space-y-4">
         <div className="bg-white rounded-xl shadow-sm p-4">
           <h1 className="text-lg font-bold text-slate-800 mb-2">
