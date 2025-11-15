@@ -1,7 +1,7 @@
 "use client";
 
 import DashboardHeader from "@/components/DashboardHeader";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRequireAuth } from "@/lib/auth";
 import {
   treasurerGetAdmins,
@@ -63,8 +63,20 @@ type LedgerEntry = {
   created_by: string;
 };
 
+type SummaryType = {
+  total_collected: number;
+  total_settled: number;
+  total_expenses?: number;
+  union_balance: number;
+  today_collected: number;
+  this_month_collected: number;
+  total_invoices: number;
+  paid_invoices: number;
+  unpaid_invoices: number;
+};
+
 export default function TreasurerPage() {
-  const { user, loading: authLoading } = useRequireAuth(["TREASURER"]);
+  useRequireAuth(["TREASURER"]);
 
   const [admins, setAdmins] = useState<AdminItem[]>([]);
   const [filteredAdmins, setFilteredAdmins] = useState<AdminItem[]>([]);
@@ -72,24 +84,15 @@ export default function TreasurerPage() {
   const [selectedAdmin, setSelectedAdmin] = useState<AdminItem | null>(null);
   const [details, setDetails] = useState<AdminDetails | null>(null);
 
-  const [loading, setLoading] = useState(false);
+  const [loadingAdmins, setLoadingAdmins] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [summary, setSummary] = useState<{
-    total_collected: number;
-    total_settled: number;
-    union_balance: number;
-    today_collected: number;
-    this_month_collected: number;
-    total_invoices: number;
-    paid_invoices: number;
-    unpaid_invoices: number;
-  } | null>(null);
+  const [summary, setSummary] = useState<SummaryType | null>(null);
 
   // Settlement form
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [savingSettlement, setSavingSettlement] = useState(false);
 
   // Expenses
   const [expenseAmount, setExpenseAmount] = useState("");
@@ -103,39 +106,42 @@ export default function TreasurerPage() {
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [ledgerError, setLedgerError] = useState<string | null>(null);
 
+  // Tabs
+  type TabType = "SETTLEMENT" | "EXPENSES" | "LEDGER";
+  const [activeTab, setActiveTab] = useState<TabType>("SETTLEMENT");
+
   // Load initial data
   useEffect(() => {
-    if (authLoading) return;
     if (typeof window === "undefined") return;
 
-    loadAdmins();
     loadSummary();
+    loadAdmins();
     loadExpenses();
     loadLedger();
-  }, [authLoading]);
-
-  async function loadAdmins() {
-    try {
-      setError(null);
-      setLoading(true);
-      const token = localStorage.getItem("access_token");
-      const data = await treasurerGetAdmins(token);
-      setAdmins(data);
-      setFilteredAdmins(data);
-    } catch (err: any) {
-      setError(err.message || "حدث خطأ أثناء تحميل المسؤولين");
-    } finally {
-      setLoading(false);
-    }
-  }
+  }, []);
 
   async function loadSummary() {
     try {
       const token = localStorage.getItem("access_token");
       const data = await treasurerGetSummary(token);
       setSummary(data);
-    } catch (err) {
-      // ممكن لاحقاً نعرض رسالة صغيرة
+    } catch {
+      // ignore small errors here
+    }
+  }
+
+  async function loadAdmins() {
+    try {
+      setError(null);
+      setLoadingAdmins(true);
+      const token = localStorage.getItem("access_token");
+      const data = await treasurerGetAdmins(token);
+      setAdmins(data);
+      setFilteredAdmins(data);
+    } catch (err: any) {
+      setError(err.message || "حدث خطأ أثناء تحميل مسؤولي التحصيل");
+    } finally {
+      setLoadingAdmins(false);
     }
   }
 
@@ -185,7 +191,7 @@ export default function TreasurerPage() {
     setNotes("");
 
     try {
-      setLoading(true);
+      setLoadingAdmins(true);
       setError(null);
       const token = localStorage.getItem("access_token");
       const data = await treasurerGetAdminDetails(token, admin.id);
@@ -200,7 +206,7 @@ export default function TreasurerPage() {
     } catch (err: any) {
       setError(err.message || "حدث خطأ أثناء تحميل بيانات المسؤول");
     } finally {
-      setLoading(false);
+      setLoadingAdmins(false);
     }
   }
 
@@ -228,7 +234,7 @@ export default function TreasurerPage() {
     }
 
     try {
-      setSaving(true);
+      setSavingSettlement(true);
       const token = localStorage.getItem("access_token");
       const result = await treasurerCreateSettlement(token, {
         admin_id: selectedAdmin.id,
@@ -269,13 +275,13 @@ export default function TreasurerPage() {
       const data = await treasurerGetAdminDetails(token, selectedAdmin.id);
       setDetails(data);
 
-      // بعد كل تسوية: نحدّث الملخص + الدفتر
-      loadSummary();
-      loadLedger();
+      // refresh summary + ledger
+      await loadSummary();
+      await loadLedger();
     } catch (err: any) {
       alert(err.message || "تعذر تسجيل التسوية");
     } finally {
-      setSaving(false);
+      setSavingSettlement(false);
     }
   }
 
@@ -307,7 +313,6 @@ export default function TreasurerPage() {
       setExpenseCategory("");
       setExpenseDescription("");
 
-      // Reload expenses + summary + ledger
       await loadExpenses();
       await loadSummary();
       await loadLedger();
@@ -318,22 +323,29 @@ export default function TreasurerPage() {
     }
   }
 
-  if (authLoading) {
-    return (
-      <main
-        className="min-h-screen flex items-center justify-center bg-brand-beige"
-        dir="rtl"
-      >
-        <p className="text-sm text-slate-600">جارٍ التحقق من الجلسة...</p>
-      </main>
-    );
+  // Stats from ledger (for tab 3)
+  const ledgerStats = useMemo(() => {
+    let totalDebit = 0;
+    let totalCredit = 0;
+    ledger.forEach((e) => {
+      totalDebit += e.debit || 0;
+      totalCredit += e.credit || 0;
+    });
+    return {
+      totalDebit,
+      totalCredit,
+    };
+  }, [ledger]);
+
+  if (!summary && !admins.length && !loadingAdmins) {
+    // first load placeholder (optional)
   }
 
   return (
     <main className="min-h-screen bg-brand-beige p-4" dir="rtl">
       <DashboardHeader title="لوحة تحكم أمين الصندوق" />
 
-      {/* Summary Cards */}
+      {/* Summary Cards (always visible) */}
       {summary && (
         <div className="max-w-6xl mx-auto mb-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -358,7 +370,9 @@ export default function TreasurerPage() {
               </div>
             </div>
             <div className="bg-white rounded-lg shadow-sm p-3">
-              <div className="text-xs text-slate-600">فواتير مدفوعة / إجمالي</div>
+              <div className="text-xs text-slate-600">
+                فواتير مدفوعة / إجمالي
+              </div>
               <div className="text-lg font-bold text-slate-800 mt-1">
                 {summary.paid_invoices} / {summary.total_invoices}
               </div>
@@ -368,409 +382,498 @@ export default function TreasurerPage() {
       )}
 
       <div className="max-w-6xl mx-auto space-y-4">
-        {/* Header text */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-bold text-slate-800">
-              لوحة أمين الصندوق
-            </h1>
-            <p className="text-sm text-slate-600">
-              استعرض أرصدة مسؤولي التحصيل، وسجّل التسويات والمصروفات، وتابع دفتر
-              الاتحاد.
-            </p>
-          </div>
+        {/* Tabs */}
+        <div className="bg-white rounded-xl shadow-sm p-2 flex flex-wrap gap-2 text-sm">
+          <button
+            onClick={() => setActiveTab("SETTLEMENT")}
+            className={`px-3 py-2 rounded-lg ${
+              activeTab === "SETTLEMENT"
+                ? "bg-brand-cyan text-white"
+                : "bg-slate-100 text-slate-700"
+            }`}
+          >
+            تسويات مسؤولي التحصيل
+          </button>
+          <button
+            onClick={() => setActiveTab("EXPENSES")}
+            className={`px-3 py-2 rounded-lg ${
+              activeTab === "EXPENSES"
+                ? "bg-brand-cyan text-white"
+                : "bg-slate-100 text-slate-700"
+            }`}
+          >
+            مصروفات الاتحاد
+          </button>
+          <button
+            onClick={() => setActiveTab("LEDGER")}
+            className={`px-3 py-2 rounded-lg ${
+              activeTab === "LEDGER"
+                ? "bg-brand-cyan text-white"
+                : "bg-slate-100 text-slate-700"
+            }`}
+          >
+            دفتر الاتحاد والإحصائيات
+          </button>
         </div>
 
-        {/* Search */}
-        <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
-          <div className="flex-1">
-            <label className="block mb-1 text-sm font-semibold text-slate-700">
-              بحث عن مسؤول تحصيل
-            </label>
-            <input
-              type="text"
-              className="w-full border rounded-lg px-3 py-2 text-sm text-right"
-              placeholder="الاسم أو اسم المستخدم"
-              value={search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
-            {error}
-          </div>
-        )}
-
-        {/* Layout: Admin list + details */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Admin list */}
-          <div className="lg:col-span-1 bg-white rounded-xl shadow-sm p-3 space-y-3">
-            <h2 className="text-sm font-semibold text-slate-800 mb-1">
-              مسؤولو التحصيل
-            </h2>
-            {loading && admins.length === 0 ? (
-              <p className="text-sm text-slate-600">جارٍ تحميل البيانات...</p>
-            ) : filteredAdmins.length === 0 ? (
-              <p className="text-sm text-slate-600">
-                لا توجد نتائج. جرّب تعديل البحث.
-              </p>
-            ) : (
-              <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-                {filteredAdmins.map((admin) => (
-                  <button
-                    key={admin.id}
-                    className={`w-full text-right border rounded-lg p-3 text-sm hover:bg-slate-50 transition ${
-                      selectedAdmin?.id === admin.id
-                        ? "border-brand-cyan bg-slate-50"
-                        : "border-slate-200"
-                    }`}
-                    onClick={() => selectAdmin(admin)}
-                  >
-                    <div className="font-semibold text-slate-800">
-                      {admin.full_name}
-                    </div>
-                    <div className="text-xs text-slate-600">
-                      اسم المستخدم: {admin.username}
-                    </div>
-                    <div className="text-xs mt-1">
-                      <span className="text-slate-600">
-                        رصيد مطلوب تسويته:{" "}
-                      </span>
-                      <span
-                        className={
-                          admin.summary.outstanding_amount > 0
-                            ? "text-orange-700 font-semibold"
-                            : "text-green-700 font-semibold"
-                        }
-                      >
-                        {admin.summary.outstanding_amount.toFixed(2)} جنيه
-                      </span>
-                    </div>
-                  </button>
-                ))}
+        {/* ============ TAB 1: Admin Settlements ============ */}
+        {activeTab === "SETTLEMENT" && (
+          <>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h1 className="text-xl font-bold text-slate-800">
+                  تسويات مسؤولي التحصيل
+                </h1>
+                <p className="text-sm text-slate-600">
+                  استعرض أرصدة مسؤولي التحصيل وسجّل التسويات النقدية معهم.
+                </p>
               </div>
-            )}
-          </div>
-
-          {/* Details + settlement */}
-          <div className="lg:col-span-2 space-y-3">
-            <div className="bg-white rounded-xl shadow-sm p-3">
-              <h2 className="text-sm font-semibold text-slate-800 mb-2">
-                تفاصيل مسؤول التحصيل
-              </h2>
-              {!selectedAdmin ? (
-                <p className="text-sm text-slate-600">
-                  اختر مسؤول تحصيل من القائمة لعرض تفاصيله.
-                </p>
-              ) : loading && !details ? (
-                <p className="text-sm text-slate-600">
-                  جارٍ تحميل تفاصيل {selectedAdmin.full_name}...
-                </p>
-              ) : !details ? (
-                <p className="text-sm text-slate-600">
-                  لم يتم تحميل التفاصيل. حاول مرة أخرى.
-                </p>
-              ) : (
-                <>
-                  {/* Summary */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                    <div className="border rounded-lg p-3 bg-slate-50">
-                      <div className="text-xs text-slate-600">
-                        إجمالي المبالغ المحصلة بواسطة هذا المسؤول
-                      </div>
-                      <div className="text-lg font-bold text-slate-800 mt-1">
-                        {details.summary.total_amount.toFixed(2)} جنيه
-                      </div>
-                    </div>
-                    <div className="border rounded-lg p-3 bg-slate-50">
-                      <div className="text-xs text-slate-600">
-                        المبالغ المسددة للخزينة
-                      </div>
-                      <div className="text-lg font-bold text-slate-800 mt-1">
-                        {details.summary.settled_amount.toFixed(2)} جنيه
-                      </div>
-                    </div>
-                    <div className="border rounded-lg p-3 bg-slate-50">
-                      <div className="text-xs text-slate-600">
-                        الرصيد المطلوب تسويته
-                      </div>
-                      <div className="text-lg font-bold text-orange-700 mt-1">
-                        {details.summary.outstanding_amount.toFixed(2)} جنيه
-                      </div>
-                    </div>
-                    <div className="border rounded-lg p-3 bg-slate-50">
-                      <div className="text-xs text-slate-600">
-                        عدد الفواتير المحصلة
-                      </div>
-                      <div className="text-lg font-bold text-slate-800 mt-1">
-                        {details.summary.payments_count}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Settlement form */}
-                  <div className="border rounded-lg p-3 mb-4">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-2">
-                      تسجيل تسوية جديدة
-                    </h3>
-                    {details.summary.outstanding_amount <= 0 ? (
-                      <p className="text-sm text-green-700">
-                        لا يوجد رصيد مستحق على هذا المسؤول حالياً.
-                      </p>
-                    ) : (
-                      <form
-                        onSubmit={submitSettlement}
-                        className="space-y-3 text-sm max-w-md"
-                      >
-                        <div>
-                          <label className="block mb-1 text-slate-700">
-                            المبلغ المسلّم (جنيه)
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            className="w-full border rounded-lg px-3 py-2 text-right"
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                            required
-                          />
-                          <p className="text-xs text-slate-500 mt-1">
-                            لا يمكن أن يزيد عن الرصيد المطلوب تسويته (
-                            {details.summary.outstanding_amount.toFixed(2)}{" "}
-                            جنيه).
-                          </p>
-                        </div>
-                        <div>
-                          <label className="block mb-1 text-slate-700">
-                            ملاحظات (اختياري)
-                          </label>
-                          <textarea
-                            className="w-full border rounded-lg px-3 py-2 text-right text-sm"
-                            rows={2}
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            placeholder="مثال: تسوية عن شهر سبتمبر بالكامل."
-                          />
-                        </div>
-                        <button
-                          type="submit"
-                          disabled={saving}
-                          className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
-                        >
-                          {saving ? "جارٍ الحفظ..." : "تسجيل التسوية"}
-                        </button>
-                      </form>
-                    )}
-                  </div>
-
-                  {/* Recent settlements */}
-                  <div className="border rounded-lg p-3">
-                    <h3 className="text-sm font-semibold text-slate-800 mb-2">
-                      آخر التسويات المسجلة
-                    </h3>
-                    {details.recent_settlements.length === 0 ? (
-                      <p className="text-sm text-slate-600">
-                        لا توجد تسويات مسجلة لهذا المسؤول حتى الآن.
-                      </p>
-                    ) : (
-                      <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1 text-sm">
-                        {details.recent_settlements.map((s) => (
-                          <div
-                            key={s.id}
-                            className="border rounded-lg p-3 bg-slate-50"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="font-semibold text-slate-800">
-                                {s.amount.toFixed(2)} جنيه
-                              </span>
-                              <span className="text-xs text-slate-600">
-                                {s.created_at}
-                              </span>
-                            </div>
-                            <div className="text-xs text-slate-600 mt-1">
-                              مسجّلة بواسطة: {s.treasurer_name}
-                            </div>
-                            {s.notes && (
-                              <div className="text-xs text-slate-600 mt-1">
-                                ملاحظات: {s.notes}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
             </div>
-          </div>
-        </div>
 
-        {/* =====================  مصروفات الاتحاد  ===================== */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Expense form */}
-          <div className="bg-white rounded-xl shadow-sm p-3 space-y-3">
-            <h2 className="text-sm font-semibold text-slate-800 mb-1">
-              إضافة مصروف اتحاد جديد
-            </h2>
-            {expenseError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-2 mb-2">
-                {expenseError}
-              </div>
-            )}
-            <form
-              onSubmit={submitExpense}
-              className="space-y-3 text-sm max-w-md"
-            >
-              <div>
-                <label className="block mb-1 text-slate-700">
-                  المبلغ (جنيه)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="w-full border rounded-lg px-3 py-2 text-right"
-                  value={expenseAmount}
-                  onChange={(e) => setExpenseAmount(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block mb-1 text-slate-700">
-                  التصنيف (اختياري)
+            <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
+              <div className="flex-1">
+                <label className="block mb-1 text-sm font-semibold text-slate-700">
+                  بحث عن مسؤول تحصيل
                 </label>
                 <input
                   type="text"
-                  className="w-full border rounded-lg px-3 py-2 text-right"
-                  value={expenseCategory}
-                  onChange={(e) => setExpenseCategory(e.target.value)}
-                  placeholder="مثال: نظافة، أمن، صيانة..."
+                  className="w-full border rounded-lg px-3 py-2 text-sm text-right"
+                  placeholder="الاسم أو اسم المستخدم"
+                  value={search}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                 />
               </div>
-              <div>
-                <label className="block mb-1 text-slate-700">
-                  الوصف / البيان
-                </label>
-                <textarea
-                  className="w-full border rounded-lg px-3 py-2 text-right text-sm"
-                  rows={2}
-                  value={expenseDescription}
-                  onChange={(e) => setExpenseDescription(e.target.value)}
-                  placeholder="مثال: مصروف صيانة الأعمدة الكهربائية."
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={expenseSaving}
-                className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
-              >
-                {expenseSaving ? "جارٍ الحفظ..." : "تسجيل المصروف"}
-              </button>
-            </form>
-          </div>
+            </div>
 
-          {/* Expense list */}
-          <div className="bg-white rounded-xl shadow-sm p-3">
-            <h2 className="text-sm font-semibold text-slate-800 mb-2">
-              آخر المصروفات المسجلة
-            </h2>
-            {expenses.length === 0 ? (
-              <p className="text-sm text-slate-600">
-                لا توجد مصروفات مسجلة حتى الآن.
-              </p>
-            ) : (
-              <div className="max-h-[40vh] overflow-y-auto pr-1 text-xs sm:text-sm">
-                <table className="w-full text-right border-collapse">
-                  <thead>
-                    <tr className="border-b text-[11px] sm:text-xs text-slate-600">
-                      <th className="py-1">التاريخ</th>
-                      <th className="py-1">البيان</th>
-                      <th className="py-1">التصنيف</th>
-                      <th className="py-1">المبلغ</th>
-                      <th className="py-1">مسجّل بواسطة</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {expenses.map((exp) => (
-                      <tr key={exp.id} className="border-b last:border-0">
-                        <td className="py-1 align-top">{exp.date}</td>
-                        <td className="py-1 align-top">{exp.description}</td>
-                        <td className="py-1 align-top">
-                          {exp.category || "-"}
-                        </td>
-                        <td className="py-1 align-top">
-                          {exp.amount.toFixed(2)}
-                        </td>
-                        <td className="py-1 align-top">{exp.created_by}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
+                {error}
               </div>
             )}
-          </div>
-        </div>
 
-        {/* =====================  دفتر الاتحاد (Ledger)  ===================== */}
-        <div className="bg-white rounded-xl shadow-sm p-3">
-          <h2 className="text-sm font-semibold text-slate-800 mb-2">
-            دفتر الاتحاد (قيود مالية)
-          </h2>
-          {ledgerError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-2 mb-2">
-              {ledgerError}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Admin list */}
+              <div className="lg:col-span-1 bg-white rounded-xl shadow-sm p-3 space-y-3">
+                <h2 className="text-sm font-semibold text-slate-800 mb-1">
+                  مسؤولو التحصيل
+                </h2>
+                {loadingAdmins && admins.length === 0 ? (
+                  <p className="text-sm text-slate-600">
+                    جارٍ تحميل البيانات...
+                  </p>
+                ) : filteredAdmins.length === 0 ? (
+                  <p className="text-sm text-slate-600">
+                    لا توجد نتائج. جرّب تعديل البحث.
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                    {filteredAdmins.map((admin) => (
+                      <button
+                        key={admin.id}
+                        className={`w-full text-right border rounded-lg p-3 text-sm hover:bg-slate-50 transition ${
+                          selectedAdmin?.id === admin.id
+                            ? "border-brand-cyan bg-slate-50"
+                            : "border-slate-200"
+                        }`}
+                        onClick={() => selectAdmin(admin)}
+                      >
+                        <div className="font-semibold text-slate-800">
+                          {admin.full_name}
+                        </div>
+                        <div className="text-xs text-slate-600">
+                          اسم المستخدم: {admin.username}
+                        </div>
+                        <div className="text-xs mt-1">
+                          <span className="text-slate-600">
+                            رصيد مطلوب تسويته:{" "}
+                          </span>
+                          <span
+                            className={
+                              admin.summary.outstanding_amount > 0
+                                ? "text-orange-700 font-semibold"
+                                : "text-green-700 font-semibold"
+                            }
+                          >
+                            {admin.summary.outstanding_amount.toFixed(2)} جنيه
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Details + settlement */}
+              <div className="lg:col-span-2 space-y-3">
+                <div className="bg-white rounded-xl shadow-sm p-3">
+                  <h2 className="text-sm font-semibold text-slate-800 mb-2">
+                    تفاصيل مسؤول التحصيل
+                  </h2>
+                  {!selectedAdmin ? (
+                    <p className="text-sm text-slate-600">
+                      اختر مسؤول تحصيل من القائمة لعرض تفاصيله.
+                    </p>
+                  ) : loadingAdmins && !details ? (
+                    <p className="text-sm text-slate-600">
+                      جارٍ تحميل تفاصيل {selectedAdmin.full_name}...
+                    </p>
+                  ) : !details ? (
+                    <p className="text-sm text-slate-600">
+                      لم يتم تحميل التفاصيل. حاول مرة أخرى.
+                    </p>
+                  ) : (
+                    <>
+                      {/* Summary */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                        <div className="border rounded-lg p-3 bg-slate-50">
+                          <div className="text-xs text-slate-600">
+                            إجمالي المبالغ المحصلة بواسطة هذا المسؤول
+                          </div>
+                          <div className="text-lg font-bold text-slate-800 mt-1">
+                            {details.summary.total_amount.toFixed(2)} جنيه
+                          </div>
+                        </div>
+                        <div className="border rounded-lg p-3 bg-slate-50">
+                          <div className="text-xs text-slate-600">
+                            المبالغ المسددة للخزينة
+                          </div>
+                          <div className="text-lg font-bold text-slate-800 mt-1">
+                            {details.summary.settled_amount.toFixed(2)} جنيه
+                          </div>
+                        </div>
+                        <div className="border rounded-lg p-3 bg-slate-50">
+                          <div className="text-xs text-slate-600">
+                            الرصيد المطلوب تسويته
+                          </div>
+                          <div className="text-lg font-bold text-orange-700 mt-1">
+                            {details.summary.outstanding_amount.toFixed(2)} جنيه
+                          </div>
+                        </div>
+                        <div className="border rounded-lg p-3 bg-slate-50">
+                          <div className="text-xs text-slate-600">
+                            عدد الفواتير المحصلة
+                          </div>
+                          <div className="text-lg font-bold text-slate-800 mt-1">
+                            {details.summary.payments_count}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Settlement form */}
+                      <div className="border rounded-lg p-3 mb-4">
+                        <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                          تسجيل تسوية جديدة
+                        </h3>
+                        {details.summary.outstanding_amount <= 0 ? (
+                          <p className="text-sm text-green-700">
+                            لا يوجد رصيد مستحق على هذا المسؤول حالياً.
+                          </p>
+                        ) : (
+                          <form
+                            onSubmit={submitSettlement}
+                            className="space-y-3 text-sm max-w-md"
+                          >
+                            <div>
+                              <label className="block mb-1 text-slate-700">
+                                المبلغ المسلّم (جنيه)
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                className="w-full border rounded-lg px-3 py-2 text-right"
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                required
+                              />
+                              <p className="text-xs text-slate-500 mt-1">
+                                لا يمكن أن يزيد عن الرصيد المطلوب تسويته (
+                                {details.summary.outstanding_amount.toFixed(2)}{" "}
+                                جنيه).
+                              </p>
+                            </div>
+                            <div>
+                              <label className="block mb-1 text-slate-700">
+                                ملاحظات (اختياري)
+                              </label>
+                              <textarea
+                                className="w-full border rounded-lg px-3 py-2 text-right text-sm"
+                                rows={2}
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                                placeholder="مثال: تسوية عن شهر سبتمبر بالكامل."
+                              />
+                            </div>
+                            <button
+                              type="submit"
+                              disabled={savingSettlement}
+                              className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
+                            >
+                              {savingSettlement
+                                ? "جارٍ الحفظ..."
+                                : "تسجيل التسوية"}
+                            </button>
+                          </form>
+                        )}
+                      </div>
+
+                      {/* Recent settlements */}
+                      <div className="border rounded-lg p-3">
+                        <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                          آخر التسويات المسجلة
+                        </h3>
+                        {details.recent_settlements.length === 0 ? (
+                          <p className="text-sm text-slate-600">
+                            لا توجد تسويات مسجلة لهذا المسؤول حتى الآن.
+                          </p>
+                        ) : (
+                          <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1 text-sm">
+                            {details.recent_settlements.map((s) => (
+                              <div
+                                key={s.id}
+                                className="border rounded-lg p-3 bg-slate-50"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="font-semibold text-slate-800">
+                                    {s.amount.toFixed(2)} جنيه
+                                  </span>
+                                  <span className="text-xs text-slate-600">
+                                    {s.created_at}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-slate-600 mt-1">
+                                  مسجّلة بواسطة: {s.treasurer_name}
+                                </div>
+                                {s.notes && (
+                                  <div className="text-xs text-slate-600 mt-1">
+                                    ملاحظات: {s.notes}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
-          )}
-          {ledger.length === 0 ? (
-            <p className="text-sm text-slate-600">
-              لا توجد قيود مالية مسجلة حتى الآن.
-            </p>
-          ) : (
-            <div className="max-h-[50vh] overflow-y-auto pr-1 text-xs sm:text-sm">
-              <table className="w-full text-right border-collapse">
-                <thead>
-                  <tr className="border-b text-[11px] sm:text-xs text-slate-600">
-                    <th className="py-1">التاريخ</th>
-                    <th className="py-1">البيان</th>
-                    <th className="py-1">مدين</th>
-                    <th className="py-1">دائن</th>
-                    <th className="py-1">الرصيد بعد القيد</th>
-                    <th className="py-1">النوع</th>
-                    <th className="py-1">مسجّل بواسطة</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ledger.map((entry) => (
-                    <tr key={entry.id} className="border-b last:border-0">
-                      <td className="py-1 align-top">{entry.date}</td>
-                      <td className="py-1 align-top">{entry.description}</td>
-                      <td className="py-1 align-top">
-                        {entry.debit > 0 ? entry.debit.toFixed(2) : "-"}
-                      </td>
-                      <td className="py-1 align-top">
-                        {entry.credit > 0 ? entry.credit.toFixed(2) : "-"}
-                      </td>
-                      <td className="py-1 align-top">
-                        {entry.balance_after.toFixed(2)}
-                      </td>
-                      <td className="py-1 align-top">
-                        {entry.entry_type === "EXPENSE"
-                          ? "مصروف"
-                          : entry.entry_type === "SETTLEMENT"
-                          ? "تسوية مسؤول"
-                          : entry.entry_type}
-                      </td>
-                      <td className="py-1 align-top">{entry.created_by}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          </>
+        )}
+
+        {/* ============ TAB 2: Expenses ============ */}
+        {activeTab === "EXPENSES" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Expense form */}
+            <div className="bg-white rounded-xl shadow-sm p-3 space-y-3">
+              <h2 className="text-sm font-semibold text-slate-800 mb-1">
+                إضافة مصروف اتحاد جديد
+              </h2>
+              {expenseError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-2 mb-2">
+                  {expenseError}
+                </div>
+              )}
+              <form
+                onSubmit={submitExpense}
+                className="space-y-3 text-sm max-w-md"
+              >
+                <div>
+                  <label className="block mb-1 text-slate-700">
+                    المبلغ (جنيه)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full border rounded-lg px-3 py-2 text-right"
+                    value={expenseAmount}
+                    onChange={(e) => setExpenseAmount(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 text-slate-700">
+                    التصنيف (اختياري)
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full border rounded-lg px-3 py-2 text-right"
+                    value={expenseCategory}
+                    onChange={(e) => setExpenseCategory(e.target.value)}
+                    placeholder="مثال: نظافة، أمن، صيانة..."
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 text-slate-700">
+                    الوصف / البيان
+                  </label>
+                  <textarea
+                    className="w-full border rounded-lg px-3 py-2 text-right text-sm"
+                    rows={2}
+                    value={expenseDescription}
+                    onChange={(e) => setExpenseDescription(e.target.value)}
+                    placeholder="مثال: مصروف صيانة الأعمدة الكهربائية."
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={expenseSaving}
+                  className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
+                >
+                  {expenseSaving ? "جارٍ الحفظ..." : "تسجيل المصروف"}
+                </button>
+              </form>
             </div>
-          )}
-        </div>
+
+            {/* Expense list */}
+            <div className="bg-white rounded-xl shadow-sm p-3">
+              <h2 className="text-sm font-semibold text-slate-800 mb-2">
+                آخر المصروفات المسجلة
+              </h2>
+              {expenses.length === 0 ? (
+                <p className="text-sm text-slate-600">
+                  لا توجد مصروفات مسجلة حتى الآن.
+                </p>
+              ) : (
+                <div className="max-h-[40vh] overflow-y-auto pr-1 text-xs sm:text-sm">
+                  <table className="w-full text-right border-collapse">
+                    <thead>
+                      <tr className="border-b text-[11px] sm:text-xs text-slate-600">
+                        <th className="py-1">التاريخ</th>
+                        <th className="py-1">البيان</th>
+                        <th className="py-1">التصنيف</th>
+                        <th className="py-1">المبلغ</th>
+                        <th className="py-1">مسجّل بواسطة</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {expenses.map((exp) => (
+                        <tr key={exp.id} className="border-b last:border-0">
+                          <td className="py-1 align-top">{exp.date}</td>
+                          <td className="py-1 align-top">{exp.description}</td>
+                          <td className="py-1 align-top">
+                            {exp.category || "-"}
+                          </td>
+                          <td className="py-1 align-top">
+                            {exp.amount.toFixed(2)}
+                          </td>
+                          <td className="py-1 align-top">{exp.created_by}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ============ TAB 3: Ledger & Stats ============ */}
+        {activeTab === "LEDGER" && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-sm p-3">
+              <h2 className="text-sm font-semibold text-slate-800 mb-2">
+                إحصائيات دفتر الاتحاد
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                <div className="border rounded-lg p-3 bg-slate-50">
+                  <div className="text-xs text-slate-600">إجمالي الإيداعات</div>
+                  <div className="text-lg font-bold text-green-700 mt-1">
+                    {ledgerStats.totalCredit.toFixed(2)} جنيه
+                  </div>
+                </div>
+                <div className="border rounded-lg p-3 bg-slate-50">
+                  <div className="text-xs text-slate-600">
+                    إجمالي المصروفات (مدين)
+                  </div>
+                  <div className="text-lg font-bold text-red-700 mt-1">
+                    {ledgerStats.totalDebit.toFixed(2)} جنيه
+                  </div>
+                </div>
+                <div className="border rounded-lg p-3 bg-slate-50">
+                  <div className="text-xs text-slate-600">الرصيد الحالي</div>
+                  <div className="text-lg font-bold text-slate-800 mt-1">
+                    {summary?.union_balance.toFixed(2) ?? "0.00"} جنيه
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 mt-2">
+                الرصيد الحالي يجب أن يساوي آخر قيمة (الرصيد بعد القيد) في
+                القائمة بالأسفل.
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm p-3">
+              <h2 className="text-sm font-semibold text-slate-800 mb-2">
+                كل الحركات المالية (دفتر الاتحاد)
+              </h2>
+              {ledgerError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-2 mb-2">
+                  {ledgerError}
+                </div>
+              )}
+              {ledger.length === 0 ? (
+                <p className="text-sm text-slate-600">
+                  لا توجد قيود مالية مسجلة حتى الآن.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1 text-xs sm:text-sm">
+                  {ledger.map((entry) => {
+                    const isCredit = entry.credit > 0;
+                    const amount = isCredit ? entry.credit : entry.debit;
+                    return (
+                      <div
+                        key={entry.id}
+                        className="border rounded-lg p-3 bg-slate-50 flex flex-col gap-1"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-600">
+                            {entry.date}
+                          </span>
+                          <span
+                            className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                              isCredit
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {isCredit ? "+ إيداع" : "- مصروف"}
+                          </span>
+                        </div>
+                        <div className="font-semibold text-slate-800">
+                          {entry.description}
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-xs text-slate-700 mt-1">
+                          <span>
+                            المبلغ:{" "}
+                            <span
+                              className={
+                                isCredit ? "text-green-700" : "text-red-700"
+                              }
+                            >
+                              {isCredit
+                                ? `+${amount.toFixed(2)}`
+                                : `-${amount.toFixed(2)}`}{" "}
+                              جنيه
+                            </span>
+                          </span>
+                          <span>
+                            الرصيد بعد القيد:{" "}
+                            <span className="font-semibold text-slate-900">
+                              {entry.balance_after.toFixed(2)} جنيه
+                            </span>
+                          </span>
+                          <span>مسجّل بواسطة: {entry.created_by}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
