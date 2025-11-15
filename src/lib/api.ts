@@ -292,3 +292,21 @@ export async function superadminCreateUser(
 
   return res.json();
 }
+
+export async function treasurerGetSummary(token: string | null) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await fetch(`${API_BASE}/treasurer/summary`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to load treasurer summary");
+  }
+
+  return res.json();
+}
+

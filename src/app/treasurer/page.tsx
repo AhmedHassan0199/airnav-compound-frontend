@@ -7,6 +7,7 @@ import {
   treasurerGetAdmins,
   treasurerGetAdminDetails,
   treasurerCreateSettlement,
+  treasurerGetSummary
 } from "@/lib/api";
 
 type AdminSummary = {
@@ -50,6 +51,17 @@ export default function TreasurerPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const [summary, setSummary] = useState<{
+  total_collected: number;
+  total_settled: number;
+  union_balance: number;
+  today_collected: number;
+  this_month_collected: number;
+  total_invoices: number;
+  paid_invoices: number;
+  unpaid_invoices: number;
+  } | null>(null);
 
   // Settlement form
   const [amount, setAmount] = useState("");
@@ -61,6 +73,13 @@ export default function TreasurerPage() {
     if (typeof window === "undefined") return;
 
     loadAdmins();
+    useEffect(() => {
+      if (authLoading) return;
+      if (typeof window === "undefined") return;
+
+      loadAdmins();
+      loadSummary();
+    }, [authLoading]);
   }, [authLoading]);
 
   async function loadAdmins() {
@@ -77,6 +96,15 @@ export default function TreasurerPage() {
       setLoading(false);
     }
   }
+  async function loadSummary() {
+  try {
+    const token = localStorage.getItem("access_token");
+    const data = await treasurerGetSummary(token);
+    setSummary(data);
+  } catch (err) {
+    // optional: ignore or show a small message
+  }
+}
 
   function handleSearchChange(value: string) {
     setSearch(value);
@@ -207,6 +235,36 @@ export default function TreasurerPage() {
   return (
     <main className="min-h-screen bg-brand-beige p-4" dir="rtl">
       <DashboardHeader title="لوحة تحكم أمين الصندوق" />
+      {summary && (
+      <div className="max-w-6xl mx-auto mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-white rounded-lg shadow-sm p-3">
+            <div className="text-xs text-slate-600">رصيد الاتحاد الحالي</div>
+            <div className="text-lg font-bold text-slate-800 mt-1">
+              {summary.union_balance.toFixed(2)} جنيه
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-3">
+            <div className="text-xs text-slate-600">تحصيل شهر {new Date().getMonth() + 1}</div>
+            <div className="text-lg font-bold text-slate-800 mt-1">
+              {summary.this_month_collected.toFixed(2)} جنيه
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-3">
+            <div className="text-xs text-slate-600">تحصيل اليوم</div>
+            <div className="text-lg font-bold text-slate-800 mt-1">
+              {summary.today_collected.toFixed(2)} جنيه
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-3">
+            <div className="text-xs text-slate-600">فواتير مدفوعة / إجمالي</div>
+            <div className="text-lg font-bold text-slate-800 mt-1">
+              {summary.paid_invoices} / {summary.total_invoices}
+            </div>
+          </div>
+        </div>
+      </div>
+      )}
       <div className="max-w-6xl mx-auto space-y-4">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
