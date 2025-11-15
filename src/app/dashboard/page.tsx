@@ -218,7 +218,7 @@ export default function AdminDashboardPage() {
         setNotes("");
       }
     } catch (err: any) {
-      alert(err.message || "تعذر حذف ال ايصال");
+      alert(err.message || "تعذر حذف الايصال");
     }
   }
 
@@ -229,7 +229,7 @@ export default function AdminDashboardPage() {
       return;
     }
     if (!newMonth || !newYear || !newAmount) {
-      alert("برجاء إدخال الشهر والسنة وقيمة ال ايصال.");
+      alert("برجاء إدخال الشهر والسنة وقيمة الايصال.");
       return;
     }
 
@@ -254,7 +254,7 @@ export default function AdminDashboardPage() {
       setNewNotes("");
       // نسيب الشهر/السنة زي ما هما عشان تفضل سريعة لو نفس الفترة
     } catch (err: any) {
-      alert(err.message || "تعذر إنشاء ال ايصال");
+      alert(err.message || "تعذر إنشاء الايصال");
     } finally {
       setNewSaving(false);
     }
@@ -522,7 +522,7 @@ export default function AdminDashboardPage() {
                               onClick={() => startCollect(inv)}
                               className="text-xs px-3 py-1.5 rounded-lg bg-brand-cyan text-white hover:opacity-90"
                             >
-                              تسجيل تحصيل هذا ال ايصال
+                              تسجيل تحصيل هذا الايصال
                             </button>
                           )}
                           {!isPaid && (
@@ -530,7 +530,7 @@ export default function AdminDashboardPage() {
                               onClick={() => handleDeleteInvoice(inv)}
                               className="text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 border border-red-200 hover:bg-red-50"
                             >
-                              حذف ال ايصال
+                              حذف الايصال
                             </button>
                           )}
                         </div>
@@ -600,7 +600,7 @@ export default function AdminDashboardPage() {
                     disabled={saving}
                     className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
                   >
-                    {saving ? "جارٍ الحفظ..." : "تسجيل التحصيل واعتبار ال ايصال مسدد"}
+                    {saving ? "جارٍ الحفظ..." : "تسجيل التحصيل واعتبار الايصال مسدد"}
                   </button>
                 </form>
               )}
@@ -629,7 +629,7 @@ export default function AdminDashboardPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block mb-1 text-slate-700">
-                        شهر ال ايصال
+                        شهر الايصال
                       </label>
                       <select
                         className="w-full border rounded-lg px-3 py-2 text-right"
@@ -654,7 +654,7 @@ export default function AdminDashboardPage() {
                     </div>
                     <div>
                       <label className="block mb-1 text-slate-700">
-                        سنة ال ايصال
+                        سنة الايصال
                       </label>
                       <input
                         type="number"
@@ -668,7 +668,7 @@ export default function AdminDashboardPage() {
 
                   <div>
                     <label className="block mb-1 text-slate-700">
-                      قيمة ال ايصال (جنيه)
+                      قيمة الايصال (جنيه)
                     </label>
                     <input
                       type="number"
@@ -710,7 +710,7 @@ export default function AdminDashboardPage() {
                     disabled={newSaving}
                     className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
                   >
-                    {newSaving ? "جارٍ الحفظ..." : "إنشاء ال ايصال"}
+                    {newSaving ? "جارٍ الحفظ..." : "إنشاء الايصال"}
                   </button>
                 </form>
               )}

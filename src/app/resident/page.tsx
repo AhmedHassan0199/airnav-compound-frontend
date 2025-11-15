@@ -51,7 +51,7 @@ async function downloadInvoicePdf(invoiceId: number, year: number, month: number
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    alert(data.message || "تعذر تحميل ملف ال ايصال.");
+    alert(data.message || "تعذر تحميل ملف الايصال.");
     return;
   }
 
@@ -106,11 +106,11 @@ function InvoiceCard({ invoice }: { invoice: Invoice }) {
           }
           className="mt-1 self-start text-xs px-3 py-1.5 rounded-lg bg-brand-cyan text-white hover:opacity-90"
         >
-          تحميل ال ايصال PDF
+          تحميل الايصال PDF
         </button>
       ) : (
         <p className="mt-1 text-[11px] text-slate-500">
-          لا يمكن تحميل ال ايصال قبل سدادها.
+          لا يمكن تحميل الايصال قبل سدادها.
         </p>
       )}
     </div>
