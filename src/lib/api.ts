@@ -1,6 +1,6 @@
 // src/lib/api.ts
 export const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:5000/api";
+  process.env.NEXT_PUBLIC_API_BASE || "https://airnav-compound.work.gd/api";
 
 export async function login(username: string, password: string) {
   const res = await fetch(`${API_BASE}/auth/login`, {
