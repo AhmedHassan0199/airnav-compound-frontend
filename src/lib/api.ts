@@ -366,3 +366,21 @@ export async function treasurerGetLedger(token: string | null) {
 
   return res.json();
 }
+
+export async function treasurerGetLateResidents(token: string | null) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await fetch(`${API_BASE}/treasurer/late-residents`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "تعذر تحميل قائمة السكان المتأخرين");
+  }
+
+  return res.json();
+}
+

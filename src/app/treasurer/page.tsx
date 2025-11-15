@@ -11,6 +11,7 @@ import {
   treasurerCreateExpense,
   treasurerGetExpenses,
   treasurerGetLedger,
+  treasurerGetLateResidents,
 } from "@/lib/api";
 
 type AdminSummary = {
@@ -75,6 +76,35 @@ type SummaryType = {
   unpaid_invoices: number;
 };
 
+type LateResident = {
+  user_id: number;
+  username: string;
+  full_name: string;
+  building: string | null;
+  floor: string | null;
+  apartment: string | null;
+  phone: string | null;
+  status_flags: {
+    current_month_late: boolean;
+    more_than_3_months: boolean;
+    partial_payments: boolean;
+  };
+  total_overdue_amount: number;
+  overdue_months: {
+    year: number;
+    month: number;
+    amount: number;
+    paid_amount: number;
+    unpaid_amount: number;
+  }[];
+};
+
+type LateResidentsResponse = {
+  today: string;
+  cutoff_day: number;
+  late_residents: LateResident[];
+};
+
 export default function TreasurerPage() {
   useRequireAuth(["TREASURER"]);
 
@@ -106,8 +136,15 @@ export default function TreasurerPage() {
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [ledgerError, setLedgerError] = useState<string | null>(null);
 
+  // Late residents
+  const [lateResidents, setLateResidents] = useState<LateResident[]>([]);
+  const [lateToday, setLateToday] = useState<string | null>(null);
+  const [lateCutoff, setLateCutoff] = useState<number | null>(null);
+  const [lateError, setLateError] = useState<string | null>(null);
+  const [lateLoading, setLateLoading] = useState(false);
+
   // Tabs
-  type TabType = "SETTLEMENT" | "EXPENSES" | "LEDGER";
+  type TabType = "SETTLEMENT" | "EXPENSES" | "LEDGER" | "LATE";
   const [activeTab, setActiveTab] = useState<TabType>("SETTLEMENT");
 
   // Load initial data
@@ -118,6 +155,7 @@ export default function TreasurerPage() {
     loadAdmins();
     loadExpenses();
     loadLedger();
+    loadLateResidents();
   }, []);
 
   async function loadSummary() {
@@ -167,6 +205,22 @@ export default function TreasurerPage() {
     }
   }
 
+  async function loadLateResidents() {
+    try {
+      setLateError(null);
+      setLateLoading(true);
+      const token = localStorage.getItem("access_token");
+      const data: LateResidentsResponse = await treasurerGetLateResidents(token);
+      setLateResidents(data.late_residents);
+      setLateToday(data.today);
+      setLateCutoff(data.cutoff_day);
+    } catch (err: any) {
+      setLateError(err.message || "تعذر تحميل قائمة السكان المتأخرين");
+    } finally {
+      setLateLoading(false);
+    }
+  }
+  
   function handleSearchChange(value: string) {
     setSearch(value);
     const q = value.trim().toLowerCase();
@@ -341,6 +395,98 @@ export default function TreasurerPage() {
     // first load placeholder (optional)
   }
 
+  function buildWhatsAppLink(resident: LateResident) {
+  if (!resident.phone) return "#";
+
+  const cleanPhone = resident.phone.replace(/[^0-9]/g, "");
+  const message = `السلام عليكم،
+هذا تنبيه من اتحاد شاغلين مدينة الملاحة الجوية بوجود مديونية صيانة على وحدتكم.
+
+إجمالي المديونية الحالية: ${resident.total_overdue_amount.toFixed(
+    2
+  )} جنيه.
+
+برجاء التكرم بالسداد في أقرب وقت، أو التواصل مع أمين الصندوق للاستفسار.`;
+  const encoded = encodeURIComponent(message);
+  return `https://wa.me/${cleanPhone}?text=${encoded}`;
+  }
+
+  function printLateResidentsList() {
+    if (!lateResidents.length) {
+      alert("لا يوجد سكان متأخرون حالياً.");
+      return;
+    }
+    const win = window.open("", "_blank");
+    if (!win) return;
+
+    const rowsHtml = lateResidents
+      .map((r, idx) => {
+        const flags: string[] = [];
+        if (r.status_flags.current_month_late) flags.push("متأخر عن الشهر الحالي");
+        if (r.status_flags.more_than_3_months)
+          flags.push("مديونية أكثر من ٣ أشهر");
+        if (r.status_flags.partial_payments) flags.push("سداد جزئي");
+
+        const months = r.overdue_months
+          .map(
+            (m) =>
+              `${m.month}/${m.year} - الباقي: ${m.unpaid_amount.toFixed(2)} ج`
+          )
+          .join(" | ");
+
+        return `
+          <tr>
+            <td>${idx + 1}</td>
+            <td>${r.full_name}</td>
+            <td>${r.building ?? "-"}/${r.floor ?? "-"}/${r.apartment ?? "-"}</td>
+            <td>${r.total_overdue_amount.toFixed(2)}</td>
+            <td>${flags.join(" - ") || "-"}</td>
+            <td>${months}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const html = `
+      <html lang="ar" dir="rtl">
+        <head>
+          <meta charset="UTF-8" />
+          <title>قائمة السكان المتأخرين</title>
+          <style>
+            body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding: 20px; }
+            h1 { text-align: center; margin-bottom: 16px; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; }
+            th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: right; }
+            th { background: #f3f4f6; }
+          </style>
+        </head>
+        <body>
+          <h1>قائمة السكان المتأخرين عن سداد الصيانة</h1>
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>الاسم</th>
+                <th>العمارة/الدور/الشقة</th>
+                <th>إجمالي المديونية (جنيه)</th>
+                <th>الحالة</th>
+                <th>الأشهر المتأخرة</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
+  }
+
   return (
     <main className="min-h-screen bg-brand-beige p-4" dir="rtl">
       <DashboardHeader title="لوحة تحكم أمين الصندوق" />
@@ -413,6 +559,16 @@ export default function TreasurerPage() {
             }`}
           >
             دفتر الاتحاد والإحصائيات
+          </button>
+          <button
+            onClick={() => setActiveTab("LATE")}
+            className={`px-3 py-2 rounded-lg ${
+              activeTab === "LATE"
+                ? "bg-brand-cyan text-white"
+                : "bg-slate-100 text-slate-700"
+            }`}
+          >
+            السكان المتأخرين
           </button>
         </div>
 
@@ -872,6 +1028,151 @@ export default function TreasurerPage() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ============ TAB 4: Late Residents ============ */}
+        {activeTab === "LATE" && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-sm p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-800 mb-1">
+                  قائمة السكان المتأخرين عن السداد
+                </h2>
+                <p className="text-xs text-slate-600">
+                  يظهر هنا أي ساكن:
+                  {" "}
+                  لم يدفع بعد اليوم الخامس من الشهر الحالي،
+                  أو عليه مديونية لأكثر من ٣ أشهر،
+                  أو قام بسداد جزئي فقط.
+                </p>
+                {lateToday && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    تاريخ التقييم: {lateToday} – بعد اليوم رقم{" "}
+                    {lateCutoff ?? 5} من كل شهر يتم اعتبار الشهر متأخر.
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={loadLateResidents}
+                  className="px-3 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs sm:text-sm"
+                >
+                  تحديث القائمة
+                </button>
+                <button
+                  onClick={printLateResidentsList}
+                  className="px-3 py-2 rounded-lg bg-brand-cyan text-white text-xs sm:text-sm"
+                >
+                  طباعة / حفظ PDF
+                </button>
+              </div>
+            </div>
+
+            {lateError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
+                {lateError}
+              </div>
+            )}
+
+            {lateLoading ? (
+              <div className="bg-white rounded-xl shadow-sm p-3 text-sm text-slate-600">
+                جارٍ تحميل قائمة السكان المتأخرين...
+              </div>
+            ) : lateResidents.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-sm p-3 text-sm text-green-700">
+                لا يوجد سكان متأخرون حالياً. 👌
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {lateResidents.map((r) => {
+                  const flags: string[] = [];
+                  if (r.status_flags.current_month_late)
+                    flags.push("متأخر عن الشهر الحالي");
+                  if (r.status_flags.more_than_3_months)
+                    flags.push("مديونية أكثر من ٣ أشهر");
+                  if (r.status_flags.partial_payments)
+                    flags.push("سداد جزئي");
+
+                  return (
+                    <div
+                      key={r.user_id}
+                      className="bg-white rounded-xl shadow-sm p-3 flex flex-col gap-2"
+                    >
+                      <div className="flex flex-col sm:flex-row justify-between gap-2">
+                        <div>
+                          <div className="font-semibold text-slate-800">
+                            {r.full_name}
+                          </div>
+                          <div className="text-xs text-slate-600 mt-1">
+                            عمارة {r.building ?? "-"} – دور {r.floor ?? "-"} – شقة{" "}
+                            {r.apartment ?? "-"}
+                          </div>
+                          {r.phone && (
+                            <div className="text-xs text-slate-600 mt-1">
+                              رقم الموبايل: {r.phone}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-sm text-right">
+                          <div className="text-xs text-slate-600">إجمالي المديونية</div>
+                          <div className="text-lg font-bold text-red-700">
+                            {r.total_overdue_amount.toFixed(2)} جنيه
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 text-[11px] sm:text-xs mt-1">
+                        {flags.map((f) => (
+                          <span
+                            key={f}
+                            className="px-2 py-1 rounded-full bg-orange-100 text-orange-800"
+                          >
+                            {f}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="mt-2 border-t pt-2 text-[11px] sm:text-xs text-slate-700">
+                        <div className="font-semibold mb-1">
+                          الأشهر المتأخرة:
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {r.overdue_months.map((m, idx) => (
+                            <div
+                              key={`${r.user_id}-${m.year}-${m.month}-${idx}`}
+                              className="border rounded-lg px-2 py-1 bg-slate-50"
+                            >
+                              <div>
+                                {m.month}/{m.year}
+                              </div>
+                              <div>
+                                المبلغ: {m.amount.toFixed(2)} – المدفوع:{" "}
+                                {m.paid_amount.toFixed(2)} – الباقي:{" "}
+                                {m.unpaid_amount.toFixed(2)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {r.phone && (
+                          <a
+                            href={buildWhatsAppLink(r)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-3 py-1 rounded-lg bg-green-500 text-white text-xs"
+                          >
+                            إرسال تذكير عبر واتساب
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
