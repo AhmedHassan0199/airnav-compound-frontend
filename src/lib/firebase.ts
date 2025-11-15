@@ -15,6 +15,10 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
 };
 
+if (typeof window !== "undefined") {
+  console.log("Firebase config (client):", firebaseConfig);
+}
+
 let messagingPromise: Promise<Messaging | null> | null = null;
 
 export function getFirebaseMessaging(): Promise<Messaging | null> {
