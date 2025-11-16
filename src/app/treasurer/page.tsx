@@ -1097,7 +1097,7 @@ export default function TreasurerPage() {
                   disabled={notifyLoading}
                   className="px-3 py-2 rounded-lg bg-green-600 text-white text-xs sm:text-sm disabled:opacity-60"
                 >
-                  {notifyLoading ? "جارٍ إرسال الإشعارات..." : "إرسال إشعارات واتحاد للسكان المتأخرين"}
+                  {notifyLoading ? "جارٍ إرسال الإشعارات..." : "إرسال إشعارات للسكان المتأخرين"}
                 </button>
               </div>
             </div>
