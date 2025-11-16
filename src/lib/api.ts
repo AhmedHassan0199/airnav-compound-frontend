@@ -404,3 +404,25 @@ export async function registerNotificationToken(token: string) {
 
   return res.json();
 }
+
+export async function sendTestNotification() {
+  const accessToken = localStorage.getItem("access_token");
+  if (!accessToken) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/notifications/test`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({}),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.message || "فشل إرسال الإشعار التجريبي");
+  }
+
+  return data;
+}

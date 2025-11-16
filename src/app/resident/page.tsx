@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRequireAuth } from "@/lib/auth";
 import { getResidentProfile, getResidentInvoices, API_BASE } from "@/lib/api";
 import EnableNotificationsButton from "@/components/EnableNotificationsButton";
+import { TestNotificationButton } from "@/components/TestNotificationsButton";
 
 type Profile = {
   user: {
@@ -187,6 +188,7 @@ export default function ResidentPage() {
       <div className="max-w-3xl mx-auto space-y-4">
         {/* Enable notifications button */}
         <EnableNotificationsButton />
+        <TestNotificationButton />
         {/* Header / Profile card */}
         <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col sm:flex-row justify-between gap-3">
           <div>
