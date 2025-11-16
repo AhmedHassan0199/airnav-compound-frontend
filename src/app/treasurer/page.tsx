@@ -12,6 +12,7 @@ import {
   treasurerGetExpenses,
   treasurerGetLedger,
   treasurerGetLateResidents,
+  treasurerNotifyLateResidents,
 } from "@/lib/api";
 
 type AdminSummary = {
@@ -143,6 +144,10 @@ export default function TreasurerPage() {
   const [lateError, setLateError] = useState<string | null>(null);
   const [lateLoading, setLateLoading] = useState(false);
 
+  const [notifyLoading, setNotifyLoading] = useState(false);
+  const [notifyMsg, setNotifyMsg] = useState<string | null>(null);
+  const [notifyError, setNotifyError] = useState<string | null>(null);
+
   // Tabs
   type TabType = "SETTLEMENT" | "EXPENSES" | "LEDGER" | "LATE";
   const [activeTab, setActiveTab] = useState<TabType>("SETTLEMENT");
@@ -221,6 +226,27 @@ export default function TreasurerPage() {
     }
   }
   
+  async function handleNotifyAllLate() {
+    try {
+      setNotifyLoading(true);
+      setNotifyMsg(null);
+      setNotifyError(null);
+
+      const token = localStorage.getItem("access_token");
+      const result = await treasurerNotifyLateResidents(token);
+
+      setNotifyMsg(
+        `تم محاولة إرسال إشعارات إلى ${result.total_targets} ساكن (من أصل ${result.total_late_residents} متأخرين). ` +
+          `تم الإرسال بنجاح إلى ${result.total_sent}، وفشل الإرسال إلى ${result.total_failed}.`
+      );
+    } catch (err: any) {
+      setNotifyError(err.message || "حدث خطأ أثناء إرسال الإشعارات.");
+    } finally {
+      setNotifyLoading(false);
+    }
+  }
+
+
   function handleSearchChange(value: string) {
     setSearch(value);
     const q = value.trim().toLowerCase();
@@ -1066,12 +1092,30 @@ export default function TreasurerPage() {
                 >
                   طباعة / حفظ PDF
                 </button>
+                <button
+                  onClick={handleNotifyAllLate}
+                  disabled={notifyLoading}
+                  className="px-3 py-2 rounded-lg bg-green-600 text-white text-xs sm:text-sm disabled:opacity-60"
+                >
+                  {notifyLoading ? "جارٍ إرسال الإشعارات..." : "إرسال إشعارات واتحاد للسكان المتأخرين"}
+                </button>
               </div>
             </div>
 
             {lateError && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
                 {lateError}
+              </div>
+            )}
+
+            {notifyMsg && (
+              <div className="bg-green-50 border border-green-200 text-green-800 text-xs rounded-lg p-2 mt-2">
+                {notifyMsg}
+              </div>
+            )}
+            {notifyError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-2 mt-2">
+                {notifyError}
               </div>
             )}
 

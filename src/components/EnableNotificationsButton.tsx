@@ -1,13 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getFirebaseMessaging } from "@/lib/firebase";
 import { getToken } from "firebase/messaging";
-import { registerNotificationToken } from "@/lib/api";
+import { registerNotificationToken, getNotificationStatus } from "@/lib/api";
 
 export default function EnableNotificationsButton() {
-  const [status, setStatus] = useState<"idle" | "asking" | "success" | "error">("idle");
+  const [status, setStatus] =
+    useState<"idle" | "asking" | "success" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
+
+  // 🔹 On mount, check if already enabled on backend
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    async function checkStatus() {
+      try {
+        const data = await getNotificationStatus();
+        if (data.has_subscription) {
+          setStatus("success");
+          setMessage("الإشعارات مفعّلة بالفعل على هذا الحساب ✅");
+        }
+      } catch {
+        // ignore – user may not be logged or no subscription yet
+      }
+    }
+
+    checkStatus();
+  }, []);
 
   async function handleEnable() {
     try {
@@ -51,7 +71,7 @@ export default function EnableNotificationsButton() {
         throw new Error("تعذر الحصول على رمز الإشعارات (FCM token).");
       }
 
-      // Send to backend
+      // Send to backend (upsert)
       await registerNotificationToken(fcmToken);
 
       setStatus("success");
@@ -63,15 +83,21 @@ export default function EnableNotificationsButton() {
     }
   }
 
+  const disabled = status === "asking";
+
   return (
     <div className="space-y-1 text-right">
       <button
         type="button"
         onClick={handleEnable}
-        disabled={status === "asking"}
+        disabled={disabled}
         className="px-3 py-2 rounded-lg bg-brand-cyan text-white text-sm font-semibold disabled:opacity-60"
       >
-        {status === "asking" ? "جارٍ التفعيل..." : "تفعيل إشعارات التأخير"}
+        {status === "success"
+          ? "الإشعارات مفعّلة ✅"
+          : status === "asking"
+          ? "جارٍ التفعيل..."
+          : "تفعيل إشعارات التأخير"}
       </button>
       {message && (
         <p

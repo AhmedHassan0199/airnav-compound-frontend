@@ -426,3 +426,50 @@ export async function sendTestNotification() {
 
   return data;
 }
+
+export async function getNotificationStatus() {
+  const accessToken = localStorage.getItem("access_token");
+  if (!accessToken) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/notifications/status`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.message || "فشل جلب حالة الإشعارات");
+  }
+
+  return data as { has_subscription: boolean; subscriptions_count: number };
+}
+
+export async function treasurerNotifyLateResidents(token: string | null) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await fetch(`${API_BASE}/treasurer/late-residents/notify-push`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({}),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.message || "فشل إرسال الإشعارات للسكان المتأخرين");
+  }
+
+  return data as {
+    total_late_residents: number;
+    total_targets: number;
+    total_sent: number;
+    total_failed: number;
+    details: any[];
+  };
+}
+
