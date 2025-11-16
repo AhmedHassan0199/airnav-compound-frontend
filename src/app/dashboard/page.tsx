@@ -478,6 +478,8 @@ export default function AdminDashboardPage() {
                   {invoices.map((inv) => {
                     const isPaid = inv.status === "PAID";
                     const isOverdue = inv.status === "OVERDUE";
+                    const isPendingConfirmation = inv.status === "PENDING_CONFIRMATION";
+
                     return (
                       <div
                         key={inv.id}
@@ -491,6 +493,8 @@ export default function AdminDashboardPage() {
                             className={`px-2 py-0.5 rounded-full text-xs ${
                               isPaid
                                 ? "bg-green-100 text-green-700"
+                                : isPendingConfirmation
+                                ? "bg-blue-100 text-blue-700"
                                 : isOverdue
                                 ? "bg-red-100 text-red-700"
                                 : "bg-amber-100 text-amber-700"
@@ -498,11 +502,14 @@ export default function AdminDashboardPage() {
                           >
                             {isPaid
                               ? "مسدد"
+                              : isPendingConfirmation
+                              ? "في انتظار تأكيد الدفع"
                               : isOverdue
                               ? "متأخرة"
                               : "غير مسدد"}
                           </span>
                         </div>
+
                         <div className="flex items-center justify-between mt-1">
                           <span>القيمة:</span>
                           <span className="font-semibold">
@@ -519,7 +526,8 @@ export default function AdminDashboardPage() {
                         </div>
 
                         <div className="mt-2 flex flex-wrap gap-2">
-                          {!isPaid && (
+                          {/* ✅ Admin can only collect / delete if NOT PAID and NOT PENDING_CONFIRMATION */}
+                          {!isPaid && !isPendingConfirmation && (
                             <button
                               onClick={() => startCollect(inv)}
                               className="text-xs px-3 py-1.5 rounded-lg bg-brand-cyan text-white hover:opacity-90"
@@ -527,13 +535,18 @@ export default function AdminDashboardPage() {
                               تسجيل تحصيل هذا الايصال
                             </button>
                           )}
-                          {!isPaid && (
+                          {!isPaid && !isPendingConfirmation && (
                             <button
                               onClick={() => handleDeleteInvoice(inv)}
                               className="text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 border border-red-200 hover:bg-red-50"
                             >
                               حذف الايصال
                             </button>
+                          )}
+                          {isPendingConfirmation && (
+                            <p className="text-[11px] text-slate-600">
+                              يوجد طلب دفع إلكتروني قيد المراجعة لهذا الايصال، لا يمكن تعديله من هنا.
+                            </p>
                           )}
                         </div>
                       </div>
@@ -790,6 +803,7 @@ export default function AdminDashboardPage() {
                   {invoices.map((inv) => {
                     const isPaid = inv.status === "PAID";
                     const isOverdue = inv.status === "OVERDUE";
+                    const isPendingConfirmation = inv.status === "PENDING_CONFIRMATION";
                     return (
                       <div
                         key={inv.id}
@@ -803,6 +817,8 @@ export default function AdminDashboardPage() {
                             className={`px-2 py-0.5 rounded-full text-xs ${
                               isPaid
                                 ? "bg-green-100 text-green-700"
+                                : isPendingConfirmation
+                                ? "bg-blue-100 text-blue-700"
                                 : isOverdue
                                 ? "bg-red-100 text-red-700"
                                 : "bg-amber-100 text-amber-700"
@@ -810,6 +826,8 @@ export default function AdminDashboardPage() {
                           >
                             {isPaid
                               ? "مسددة"
+                              : isPendingConfirmation
+                              ? "في انتظار تأكيد الدفع"
                               : isOverdue
                               ? "متأخرة"
                               : "غير مسددة"}
