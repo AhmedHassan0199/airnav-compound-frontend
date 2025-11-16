@@ -473,3 +473,29 @@ export async function treasurerNotifyLateResidents(token: string | null) {
   };
 }
 
+export async function submitInstapayPayment(invoiceId: number, payload: {
+  transaction_ref: string;
+  instapay_sender_id: string;
+  amount: number;
+}) {
+  const token = localStorage.getItem("access_token");
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`${API_BASE}/resident/invoices/${invoiceId}/instapay`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.message || "فشل تسجيل عملية إنستا باي");
+  }
+
+  return data;
+}
+
