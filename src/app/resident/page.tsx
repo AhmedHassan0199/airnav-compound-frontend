@@ -97,7 +97,7 @@ function InvoiceCard({
   const isPaid = invoice.status === "PAID";
   const isPendingConfirmation = invoice.status === "PENDING_CONFIRMATION";
   const canPayOnline =
-    invoice.status === "UNPAID" || invoice.status === "OVERDUE";
+    invoice.status === "UNPAID" || invoice.status === "PENDING" || invoice.status === "OVERDUE";
 
   const statusColor =
     invoice.status === "PAID"
