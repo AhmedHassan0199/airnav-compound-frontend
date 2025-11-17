@@ -11,7 +11,14 @@ const ROLES = [
   { value: "TREASURER", label: "أمين صندوق" },
   { value: "SUPERADMIN", label: "مشرف عام" },
   { value: "ONLINE_ADMIN", label: "مسؤول تحصيل اونلاين" },
-  
+];
+
+const COUNTRY_CODES = [
+  { value: "+20", label: "🇪🇬 مصر (+20)" },
+  { value: "+971", label: "🇦🇪 الإمارات (+971)" },
+  { value: "+966", label: "🇸🇦 السعودية (+966)" },
+  { value: "+974", label: "🇶🇦 قطر (+974)" },
+  { value: "+965", label: "🇰🇼 الكويت (+965)" },
 ];
 
 export default function SuperadminUsersPage() {
@@ -25,7 +32,10 @@ export default function SuperadminUsersPage() {
   const [building, setBuilding] = useState("");
   const [floor, setFloor] = useState("");
   const [apartment, setApartment] = useState("");
-  const [phone, setPhone] = useState("");
+
+  // phone split: country code + local number
+  const [countryCode, setCountryCode] = useState("+20"); // default Egypt
+  const [phoneLocal, setPhoneLocal] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +66,13 @@ export default function SuperadminUsersPage() {
       setSaving(true);
       const token = localStorage.getItem("access_token");
 
+      // build full phone: +20 + 1001234567
+      let fullPhone: string | undefined = undefined;
+      if (phoneLocal.trim()) {
+        const localClean = phoneLocal.trim().replace(/^0+/, ""); // remove leading zeros
+        fullPhone = `${countryCode}${localClean}`;
+      }
+
       await superadminCreateUser(token, {
         username,
         password,
@@ -64,7 +81,7 @@ export default function SuperadminUsersPage() {
         building: building || undefined,
         floor: floor || undefined,
         apartment: apartment || undefined,
-        phone: phone || undefined,
+        phone: fullPhone,
       });
 
       setSuccess("تم إنشاء المستخدم بنجاح.");
@@ -74,7 +91,8 @@ export default function SuperadminUsersPage() {
       setBuilding("");
       setFloor("");
       setApartment("");
-      setPhone("");
+      setCountryCode("+20");
+      setPhoneLocal("");
     } catch (err: any) {
       setError(err.message || "تعذر إنشاء المستخدم.");
     } finally {
@@ -92,7 +110,7 @@ export default function SuperadminUsersPage() {
           </h1>
           <p className="text-sm text-slate-600">
             يمكن للمشرف العام إنشاء مستخدمين من الأنواع: ساكن، مسؤول تحصيل، أمين
-            صندوق، أو مشرف عام.
+            صندوق، مشرف عام، أو مسؤول تحصيل أونلاين.
           </p>
         </div>
 
@@ -141,9 +159,7 @@ export default function SuperadminUsersPage() {
             </div>
 
             <div>
-              <label className="block mb-1 text-slate-700">
-                كلمة المرور
-              </label>
+              <label className="block mb-1 text-slate-700">كلمة المرور</label>
               <input
                 type="password"
                 className="w-full border rounded-lg px-3 py-2 text-right"
@@ -169,17 +185,34 @@ export default function SuperadminUsersPage() {
               />
             </div>
 
+            {/* Phone with country code + local number */}
             <div>
               <label className="block mb-1 text-slate-700">
-                رقم الموبايل (مع كود الدولة)
+                رقم الموبايل
               </label>
-              <input
-                type="text"
-                className="w-full border rounded-lg px-3 py-2 text-right"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="مثال: +201001234567"
-              />
+              <div className="flex gap-2">
+                <select
+                  className="border rounded-lg px-3 py-2 text-right bg-white min-w-[130px]"
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                >
+                  {COUNTRY_CODES.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="tel"
+                  className="flex-1 border rounded-lg px-3 py-2 text-right"
+                  value={phoneLocal}
+                  onChange={(e) => setPhoneLocal(e.target.value)}
+                  placeholder="مثال: 01090707277"
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-slate-500">
+                سيتم حفظ رقم الموبايل بصيغة دولية، مثل: +201090707277
+              </p>
             </div>
 
             <div className="grid grid-cols-3 gap-2">
