@@ -10,6 +10,8 @@ const ROLES = [
   { value: "ADMIN", label: "مسؤول تحصيل" },
   { value: "TREASURER", label: "أمين صندوق" },
   { value: "SUPERADMIN", label: "مشرف عام" },
+  { value: "ONLINE_ADMIN", label: "مسؤول تحصيل اونلاين" },
+  
 ];
 
 export default function SuperadminUsersPage() {
