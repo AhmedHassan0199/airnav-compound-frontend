@@ -58,7 +58,7 @@ type OnlinePaymentItem = {
 
 export default function AdminDashboardPage() {
   // SUPERADMIN will also come here later, but for now:
-  const { user, loading: authLoading } = useRequireAuth(["ADMIN", "SUPERADMIN"]);
+  const { user, loading: authLoading } = useRequireAuth(["ADMIN", "SUPERADMIN", "ONLINE_ADMIN"]);
 
   const [query, setQuery] = useState("");
   const [residents, setResidents] = useState<Resident[]>([]);
@@ -439,6 +439,7 @@ export default function AdminDashboardPage() {
           >
             ملفي كمسؤول تحصيل
           </button>
+          {user?.role === "ONLINE_ADMIN" && (
           <button
             onClick={async () => {
               setActiveTab("online");
@@ -454,8 +455,8 @@ export default function AdminDashboardPage() {
           >
             مدفوعات إنستا باي
           </button>
+          )}
         </div>
-
         {/* Search */}
         <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
           <div className="flex-1">
@@ -1052,7 +1053,7 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {activeTab === "online" && (
+        {activeTab === "online" && user?.role === "ONLINE_ADMIN" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-3 bg-white rounded-xl shadow-sm p-4">
               <h2 className="text-sm font-semibold text-slate-800 mb-2">
