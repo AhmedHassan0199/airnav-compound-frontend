@@ -499,3 +499,43 @@ export async function submitInstapayPayment(invoiceId: number, payload: {
   return data;
 }
 
+export async function adminGetOnlinePaymentsPending(token: string | null) {
+  if (!token) throw new Error("NO_AUTH");
+  const res = await fetch(`${API_BASE}/admin/online_payments/pending`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "فشل تحميل المدفوعات الإلكترونية المعلقة");
+  }
+  return res.json();
+}
+
+export async function adminActOnOnlinePayment(
+  token: string | null,
+  id: number,
+  action: "approve" | "reject",
+  payload?: { notes?: string }
+) {
+  if (!token) throw new Error("NO_AUTH");
+  const res = await fetch(
+    `${API_BASE}/admin/online_payments/${id}/${action}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload || {}),
+    }
+  );
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      data.message || "تعذر تنفيذ العملية على الدفع الإلكتروني"
+    );
+  }
+  return res.json();
+}

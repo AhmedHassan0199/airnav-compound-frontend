@@ -10,6 +10,8 @@ import {
   adminCreateInvoice, 
   adminDeleteInvoice,
   adminGetMySummary,
+  adminGetOnlinePaymentsPending,
+  adminActOnOnlinePayment,
 } from "@/lib/api";
 
 type Resident = {
@@ -34,6 +36,24 @@ type Invoice = {
   due_date: string | null;
   paid_date: string | null;
   notes: string | null;
+};
+
+type OnlinePaymentItem = {
+  id: number;
+  invoice_id: number;
+  invoice_status: string;
+  year: number;
+  month: number;
+  amount: number;
+  resident_id: number;
+  resident_username: string;
+  resident_name: string | null;
+  building: string | null;
+  floor: string | null;
+  apartment: string | null;
+  instapay_sender_id: string;
+  transaction_ref: string;
+  created_at: string;
 };
 
 export default function AdminDashboardPage() {
@@ -64,7 +84,14 @@ export default function AdminDashboardPage() {
   const [newNotes, setNewNotes] = useState<string>("");
   const [newSaving, setNewSaving] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<"collect" | "view" | "profile">(
+  // Online payments state
+  const [onlinePayments, setOnlinePayments] = useState<OnlinePaymentItem[]>([]);
+  const [onlineLoading, setOnlineLoading] = useState(false);
+  const [onlineError, setOnlineError] = useState<string | null>(null);
+  const [onlineActionLoadingId, setOnlineActionLoadingId] = useState<number | null>(null);
+  const [onlineLoadedOnce, setOnlineLoadedOnce] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<"collect" | "view" | "profile" | "online">(
     "collect"
   );
 
@@ -122,10 +149,49 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function loadOnlinePayments() {
+    try {
+      setOnlineError(null);
+      setOnlineLoading(true);
+      const token = localStorage.getItem("access_token");
+      const data = await adminGetOnlinePaymentsPending(token);
+      setOnlinePayments(data);
+      setOnlineLoadedOnce(true);
+    } catch (err: any) {
+      setOnlineError(
+        err.message || "حدث خطأ أثناء تحميل المدفوعات الإلكترونية المعلقة"
+      );
+    } finally {
+      setOnlineLoading(false);
+    }
+  }
+
+
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     await loadResidents(query.trim());
   }
+
+  async function handleOnlineAction(id: number, action: "approve" | "reject") {
+    const confirmText =
+      action === "approve"
+        ? "هل أنت متأكد من اعتماد هذه العملية واعتبار الفاتورة مسددة؟"
+        : "هل أنت متأكد من رفض هذه العملية؟ سيتم إعادة الفاتورة كغير مسددة.";
+
+    if (!window.confirm(confirmText)) return;
+
+    try {
+      setOnlineActionLoadingId(id);
+      const token = localStorage.getItem("access_token");
+      await adminActOnOnlinePayment(token, id, action, {});
+      await loadOnlinePayments();
+    } catch (err: any) {
+      alert(err.message || "تعذر تنفيذ العملية على الدفع الإلكتروني");
+    } finally {
+      setOnlineActionLoadingId(null);
+    }
+  }
+
 
   async function handleSelectResident(res: Resident) {
     setSelectedResident(res);
@@ -372,6 +438,21 @@ export default function AdminDashboardPage() {
             }`}
           >
             ملفي كمسؤول تحصيل
+          </button>
+          <button
+            onClick={async () => {
+              setActiveTab("online");
+              if (!onlineLoadedOnce) {
+                await loadOnlinePayments();
+              }
+            }}
+            className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
+              activeTab === "online"
+                ? "bg-brand-cyan text-white"
+                : "bg-white text-slate-700 border border-slate-200"
+            }`}
+          >
+            مدفوعات إنستا باي
           </button>
         </div>
 
@@ -971,6 +1052,108 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
+        {activeTab === "online" && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-3 bg-white rounded-xl shadow-sm p-4">
+              <h2 className="text-sm font-semibold text-slate-800 mb-2">
+                المدفوعات الإلكترونية (إنستا باي) قيد المراجعة
+              </h2>
+
+              {onlineLoading && (
+                <p className="text-sm text-slate-600">جارٍ تحميل البيانات...</p>
+              )}
+
+              {onlineError && (
+                <p className="text-sm text-red-600 mb-2">{onlineError}</p>
+              )}
+
+              {!onlineLoading && onlinePayments.length === 0 && !onlineError && (
+                <p className="text-sm text-slate-600">
+                  لا توجد مدفوعات إلكترونية معلقة حالياً.
+                </p>
+              )}
+
+              {!onlineLoading && onlinePayments.length > 0 && (
+                <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1 text-sm">
+                  {onlinePayments.map((op) => (
+                    <div
+                      key={op.id}
+                      className="border rounded-lg p-3 bg-slate-50 flex flex-col gap-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <div className="font-semibold text-slate-800">
+                            {op.resident_name || op.resident_username}
+                          </div>
+                          <div className="text-xs text-slate-600">
+                            مبنى {op.building} – دور {op.floor} – شقة {op.apartment}
+                          </div>
+                        </div>
+                        <div className="text-xs text-slate-600 text-left">
+                          <div>تاريخ الطلب:</div>
+                          <div>{op.created_at}</div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-slate-700">
+                        <div>
+                          <div className="text-slate-600">الفاتورة:</div>
+                          <div>
+                            شهر {op.month}/{op.year}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-slate-600">المبلغ:</div>
+                          <div className="font-semibold">
+                            {op.amount.toFixed(2)} جنيه
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-slate-600">حالة الفاتورة:</div>
+                          <div>{op.invoice_status}</div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-700 mt-1">
+                        <div>
+                          <div className="text-slate-600">حساب/موبايل المرسل:</div>
+                          <div>{op.instapay_sender_id}</div>
+                        </div>
+                        <div>
+                          <div className="text-slate-600">
+                            رقم العملية (Transaction Ref):
+                          </div>
+                          <div>{op.transaction_ref}</div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOnlineAction(op.id, "reject")}
+                          disabled={onlineActionLoadingId === op.id}
+                          className="px-3 py-1.5 rounded-lg bg-red-100 text-red-700 border border-red-200 text-xs hover:bg-red-50 disabled:opacity-60"
+                        >
+                          {onlineActionLoadingId === op.id && "جاري التنفيذ..."}
+                          {onlineActionLoadingId !== op.id && "رفض العملية"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOnlineAction(op.id, "approve")}
+                          disabled={onlineActionLoadingId === op.id}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs hover:opacity-90 disabled:opacity-60"
+                        >
+                          {onlineActionLoadingId === op.id && "جاري التنفيذ..."}
+                          {onlineActionLoadingId !== op.id && "اعتماد العملية واعتبار الفاتورة مسددة"}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
