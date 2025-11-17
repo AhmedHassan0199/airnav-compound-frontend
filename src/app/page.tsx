@@ -21,7 +21,7 @@ export default function LoginPage() {
       localStorage.setItem("username", data.user.username);
       localStorage.setItem("role", data.user.role);
 
-      if (data.user.role === "SUPERADMIN" || data.user.role === "ADMIN") {
+      if (data.user.role === "SUPERADMIN" || data.user.role === "ADMIN" || data.user.role === "ONLINE_ADMIN") {
         router.push("/dashboard");
       } else if (data.user.role === "TREASURER") {
         router.push("/treasurer");
