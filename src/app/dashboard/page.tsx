@@ -91,9 +91,9 @@ export default function AdminDashboardPage() {
   const [onlineActionLoadingId, setOnlineActionLoadingId] = useState<number | null>(null);
   const [onlineLoadedOnce, setOnlineLoadedOnce] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<"collect" | "view" | "profile" | "online">(
-    "collect"
-  );
+  const [activeTab, setActiveTab] = useState<"collect" | "view" | "profile" | "online">(() => {
+    return user?.role === "ONLINE_ADMIN" ? "online" : "collect";
+  });
 
   // Admin profile summary
     const [profile, setProfile] = useState<{
@@ -404,6 +404,7 @@ export default function AdminDashboardPage() {
         
         {/* Tabs */}
         <div className="flex gap-2 mt-1">
+          {user?.role !== "ONLINE_ADMIN" && (
           <button
             onClick={() => setActiveTab("collect")}
             className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
@@ -414,6 +415,8 @@ export default function AdminDashboardPage() {
           >
             تحصيل الصيانة
           </button>
+          )}
+          {user?.role !== "ONLINE_ADMIN" && (
           <button
             onClick={() => setActiveTab("view")}
             className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
@@ -424,6 +427,8 @@ export default function AdminDashboardPage() {
           >
             عرض الفواتير وطباعتها
           </button>
+          )}
+          {user?.role !== "ONLINE_ADMIN" && (
           <button
             onClick={async () => {
               setActiveTab("profile");
@@ -439,6 +444,7 @@ export default function AdminDashboardPage() {
           >
             ملفي كمسؤول تحصيل
           </button>
+          )}
           {user?.role === "ONLINE_ADMIN" && (
           <button
             onClick={async () => {
