@@ -92,7 +92,18 @@ export default function AdminDashboardPage() {
   const [onlineLoadedOnce, setOnlineLoadedOnce] = useState(false);
 
   const [activeTab, setActiveTab] = useState<"collect" | "view" | "profile" | "online">("collect");
+  const [tabInitialized, setTabInitialized] = useState(false);
 
+  useEffect(() => {
+    if (!authLoading && user && !tabInitialized) {
+      if (user.role === "ONLINE_ADMIN") {
+        setActiveTab("online");
+      } else {
+        setActiveTab("collect");
+      }
+      setTabInitialized(true);
+    }
+  }, [authLoading, user, tabInitialized]);
 
   // Admin profile summary
     const [profile, setProfile] = useState<{
