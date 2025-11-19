@@ -439,7 +439,6 @@ export default function AdminDashboardPage() {
             عرض الفواتير وطباعتها
           </button>
           )}
-          {user?.role !== "ONLINE_ADMIN" && (
           <button
             onClick={async () => {
               setActiveTab("profile");
@@ -455,7 +454,6 @@ export default function AdminDashboardPage() {
           >
             ملفي كمسؤول تحصيل
           </button>
-          )}
           {user?.role === "ONLINE_ADMIN" && (
           <button
             onClick={async () => {
