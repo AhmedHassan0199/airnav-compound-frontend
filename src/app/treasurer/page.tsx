@@ -26,6 +26,7 @@ type AdminItem = {
   id: number;
   username: string;
   full_name: string;
+  role: string;
   summary: AdminSummary;
 };
 
@@ -659,16 +660,25 @@ export default function TreasurerPage() {
                         }`}
                         onClick={() => selectAdmin(admin)}
                       >
-                        <div className="font-semibold text-slate-800">
-                          {admin.full_name}
+                        <div className="flex items-center justify-between gap-2">
+                          <div>
+                            <div className="font-semibold text-slate-800">
+                              {admin.full_name}
+                            </div>
+                            <div className="text-xs text-slate-600">
+                              اسم المستخدم: {admin.username}
+                            </div>
+                          </div>
+
+                          {admin.role === "ONLINE_ADMIN" && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 border border-sky-200">
+                              اونلاين
+                            </span>
+                          )}
                         </div>
-                        <div className="text-xs text-slate-600">
-                          اسم المستخدم: {admin.username}
-                        </div>
+
                         <div className="text-xs mt-1">
-                          <span className="text-slate-600">
-                            رصيد مطلوب تسويته:{" "}
-                          </span>
+                          <span className="text-slate-600">رصيد مطلوب تسويته: </span>
                           <span
                             className={
                               admin.summary.outstanding_amount > 0
