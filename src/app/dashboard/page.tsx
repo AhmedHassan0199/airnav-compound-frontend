@@ -93,16 +93,6 @@ export default function AdminDashboardPage() {
 
   const [activeTab, setActiveTab] = useState<"collect" | "view" | "profile" | "online">("collect");
 
-  // After user loads, correct the active tab
-  useEffect(() => {
-    if (!authLoading && user) {
-      if (user.role === "ONLINE_ADMIN") {
-        setActiveTab("online");
-      } else {
-        setActiveTab(activeTab);
-      }
-    }
-  }, [authLoading, user]);
 
   // Admin profile summary
     const [profile, setProfile] = useState<{
