@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ReactNode } from "react";
+import GlobalLoaderOverlay from "@/components/GlobalLoaderOverlay";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,10 +19,18 @@ export const metadata: Metadata = {
   description: "بوابة إدارة الصيانة الشهرية للكمبوند",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="ar">
-      <body dir="rtl">{children}</body>
+    <html lang="ar" dir="rtl">
+      <body className="bg-brand-beige">
+        {children}
+        {/* Global loader overlay */}
+        <GlobalLoaderOverlay />
+      </body>
     </html>
   );
 }

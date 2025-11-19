@@ -1,9 +1,25 @@
 // src/lib/api.ts
-export const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE || "https://airnav-compound.work.gd/api";
+import { startRequest, endRequest } from "@/lib/loaderManager";
+
+
+async function apiFetch(input: RequestInfo | URL, init?: RequestInit) {
+  startRequest();
+  try {
+    const res = await fetch(input, {
+      ...init,
+    });
+
+    return res;
+  } finally {
+    endRequest();
+  }
+}
+
+
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://airnav-compound.work.gd/api";
 
 export async function login(username: string, password: string) {
-  const res = await fetch(`${API_BASE}/auth/login`, {
+  const res = await apiFetch(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -25,7 +41,7 @@ export async function getResidentProfile(token: string | null) {
     throw new Error("Missing token");
   }
 
-  const res = await fetch(`${API_BASE}/resident/profile`, {
+  const res = await apiFetch(`${API_BASE}/resident/profile`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -45,7 +61,7 @@ export async function getResidentInvoices(token: string | null) {
     throw new Error("Missing token");
   }
 
-  const res = await fetch(`${API_BASE}/resident/invoices`, {
+  const res = await apiFetch(`${API_BASE}/resident/invoices`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -66,7 +82,7 @@ export async function adminSearchResidents(
   if (!token) throw new Error("Missing token");
 
   const url = `${API_BASE}/admin/residents?query=${encodeURIComponent(query)}`;
-  const res = await fetch(url, {
+  const res = await apiFetch(url, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -86,7 +102,7 @@ export async function adminGetResidentInvoices(
 ) {
   if (!token) throw new Error("Missing token");
 
-  const res = await fetch(`${API_BASE}/admin/residents/${userId}/invoices`, {
+  const res = await apiFetch(`${API_BASE}/admin/residents/${userId}/invoices`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -112,7 +128,7 @@ export async function adminCollectPayment(
 ) {
   if (!token) throw new Error("Missing token");
 
-  const res = await fetch(`${API_BASE}/admin/collect`, {
+  const res = await apiFetch(`${API_BASE}/admin/collect`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -142,7 +158,7 @@ export async function adminCreateInvoice(
 ) {
   if (!token) throw new Error("Missing token");
 
-  const res = await fetch(`${API_BASE}/admin/invoices`, {
+  const res = await apiFetch(`${API_BASE}/admin/invoices`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -165,7 +181,7 @@ export async function adminDeleteInvoice(
 ) {
   if (!token) throw new Error("Missing token");
 
-  const res = await fetch(`${API_BASE}/admin/invoices/${invoiceId}`, {
+  const res = await apiFetch(`${API_BASE}/admin/invoices/${invoiceId}`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -183,7 +199,7 @@ export async function adminDeleteInvoice(
 export async function adminGetMySummary(token: string | null) {
   if (!token) throw new Error("Missing token");
 
-  const res = await fetch(`${API_BASE}/admin/me/summary`, {
+  const res = await apiFetch(`${API_BASE}/admin/me/summary`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -200,7 +216,7 @@ export async function adminGetMySummary(token: string | null) {
 export async function treasurerGetAdmins(token: string | null) {
   if (!token) throw new Error("Missing token");
 
-  const res = await fetch(`${API_BASE}/treasurer/admins`, {
+  const res = await apiFetch(`${API_BASE}/treasurer/admins`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -220,7 +236,7 @@ export async function treasurerGetAdminDetails(
 ) {
   if (!token) throw new Error("Missing token");
 
-  const res = await fetch(`${API_BASE}/treasurer/admins/${adminId}`, {
+  const res = await apiFetch(`${API_BASE}/treasurer/admins/${adminId}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -244,7 +260,7 @@ export async function treasurerCreateSettlement(
 ) {
   if (!token) throw new Error("Missing token");
 
-  const res = await fetch(`${API_BASE}/treasurer/settlements`, {
+  const res = await apiFetch(`${API_BASE}/treasurer/settlements`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -276,7 +292,7 @@ export async function superadminCreateUser(
 ) {
   if (!token) throw new Error("Missing token");
 
-  const res = await fetch(`${API_BASE}/admin/users`, {
+  const res = await apiFetch(`${API_BASE}/admin/users`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -296,7 +312,7 @@ export async function superadminCreateUser(
 export async function treasurerGetSummary(token: string | null) {
   if (!token) throw new Error("Missing token");
 
-  const res = await fetch(`${API_BASE}/treasurer/summary`, {
+  const res = await apiFetch(`${API_BASE}/treasurer/summary`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -316,7 +332,7 @@ export async function treasurerCreateExpense(
 ) {
   if (!token) throw new Error("Missing token");
 
-  const res = await fetch(`${API_BASE}/treasurer/expenses`, {
+  const res = await apiFetch(`${API_BASE}/treasurer/expenses`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -336,7 +352,7 @@ export async function treasurerCreateExpense(
 export async function treasurerGetExpenses(token: string | null) {
   if (!token) throw new Error("Missing token");
 
-  const res = await fetch(`${API_BASE}/treasurer/expenses`, {
+  const res = await apiFetch(`${API_BASE}/treasurer/expenses`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -353,7 +369,7 @@ export async function treasurerGetExpenses(token: string | null) {
 export async function treasurerGetLedger(token: string | null) {
   if (!token) throw new Error("Missing token");
 
-  const res = await fetch(`${API_BASE}/treasurer/ledger?limit=50`, {
+  const res = await apiFetch(`${API_BASE}/treasurer/ledger?limit=50`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -370,7 +386,7 @@ export async function treasurerGetLedger(token: string | null) {
 export async function treasurerGetLateResidents(token: string | null) {
   if (!token) throw new Error("Missing token");
 
-  const res = await fetch(`${API_BASE}/treasurer/late-residents`, {
+  const res = await apiFetch(`${API_BASE}/treasurer/late-residents`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -388,7 +404,7 @@ export async function registerNotificationToken(token: string) {
   const accessToken = localStorage.getItem("access_token");
   if (!accessToken) throw new Error("Not authenticated");
 
-  const res = await fetch(`${API_BASE}/notifications/register`, {
+  const res = await apiFetch(`${API_BASE}/notifications/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -409,7 +425,7 @@ export async function sendTestNotification() {
   const accessToken = localStorage.getItem("access_token");
   if (!accessToken) throw new Error("Not authenticated");
 
-  const res = await fetch(`${API_BASE}/notifications/test`, {
+  const res = await apiFetch(`${API_BASE}/notifications/test`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -431,7 +447,7 @@ export async function getNotificationStatus() {
   const accessToken = localStorage.getItem("access_token");
   if (!accessToken) throw new Error("Not authenticated");
 
-  const res = await fetch(`${API_BASE}/notifications/status`, {
+  const res = await apiFetch(`${API_BASE}/notifications/status`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -449,7 +465,7 @@ export async function getNotificationStatus() {
 export async function treasurerNotifyLateResidents(token: string | null) {
   if (!token) throw new Error("Missing token");
 
-  const res = await fetch(`${API_BASE}/treasurer/late-residents/notify-push`, {
+  const res = await apiFetch(`${API_BASE}/treasurer/late-residents/notify-push`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -481,7 +497,7 @@ export async function submitInstapayPayment(invoiceId: number, payload: {
   const token = localStorage.getItem("access_token");
   if (!token) throw new Error("Not authenticated");
 
-  const res = await fetch(`${API_BASE}/resident/invoices/${invoiceId}/instapay`, {
+  const res = await apiFetch(`${API_BASE}/resident/invoices/${invoiceId}/instapay`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -501,7 +517,7 @@ export async function submitInstapayPayment(invoiceId: number, payload: {
 
 export async function adminGetOnlinePaymentsPending(token: string | null) {
   if (!token) throw new Error("NO_AUTH");
-  const res = await fetch(`${API_BASE}/admin/online_payments/pending`, {
+  const res = await apiFetch(`${API_BASE}/admin/online_payments/pending`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -520,7 +536,7 @@ export async function adminActOnOnlinePayment(
   payload?: { notes?: string }
 ) {
   if (!token) throw new Error("NO_AUTH");
-  const res = await fetch(
+  const res = await apiFetch(
     `${API_BASE}/admin/online_payments/${id}/${action}`,
     {
       method: "POST",
