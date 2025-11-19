@@ -99,7 +99,7 @@ export default function AdminDashboardPage() {
       if (user.role === "ONLINE_ADMIN") {
         setActiveTab("online");
       } else {
-        setActiveTab("collect");
+        setActiveTab(activeTab);
       }
     }
   }, [authLoading, user]);
