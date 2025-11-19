@@ -98,6 +98,7 @@ export default function AdminDashboardPage() {
     if (!authLoading && user && !tabInitialized) {
       if (user.role === "ONLINE_ADMIN") {
         setActiveTab("online");
+        loadOnlinePayments()
       } else {
         setActiveTab("collect");
       }
