@@ -213,6 +213,106 @@ export async function adminGetMySummary(token: string | null) {
   return res.json();
 }
 
+export async function superadminGetAdminsWithBuildings(token: string | null) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await apiFetch(`${API_BASE}/admin/admins-with-buildings`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(
+      data.message || "Failed to load admins with buildings"
+    );
+  }
+
+  return res.json();
+}
+
+export async function superadminGetBuildings(token: string | null) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await apiFetch(`${API_BASE}/admin/buildings`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to load buildings");
+  }
+
+  return res.json();
+}
+
+export async function superadminAssignBuildingToAdmin(
+  token: string | null,
+  adminId: number,
+  building: string
+) {
+  if (!token) throw new Error("Missing token");
+
+  const payload = {
+    admin_id: adminId,
+    building: building,
+  };
+
+  const res = await apiFetch(`${API_BASE}/admin/admin_buildings`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(
+      data.message || "Failed to assign building to admin"
+    );
+  }
+
+  return data;
+}
+
+export async function superadminRemoveBuildingFromAdmin(
+  token: string | null,
+  adminId: number,
+  building: string
+) {
+  if (!token) throw new Error("Missing token");
+
+  const payload = {
+    admin_id: adminId,
+    building: building,
+  };
+
+  const res = await apiFetch(`${API_BASE}/admin/admin_buildings`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(
+      data.message || "Failed to remove building from admin"
+    );
+  }
+
+  return data;
+}
+
 export async function treasurerGetAdmins(token: string | null) {
   if (!token) throw new Error("Missing token");
 
