@@ -150,7 +150,7 @@ export default function TreasurerPage() {
   const [notifyError, setNotifyError] = useState<string | null>(null);
 
   // Tabs
-  type TabType = "SETTLEMENT" | "EXPENSES" | "LEDGER" | "LATE";
+  type TabType = "SETTLEMENT" | "EXPENSES" | "LEDGER" | "LATE" | "DASHBOARD";
   const [activeTab, setActiveTab] = useState<TabType>("SETTLEMENT");
 
   // Load initial data
@@ -216,7 +216,9 @@ export default function TreasurerPage() {
       setLateError(null);
       setLateLoading(true);
       const token = localStorage.getItem("access_token");
-      const data: LateResidentsResponse = await treasurerGetLateResidents(token);
+      const data: LateResidentsResponse = await treasurerGetLateResidents(
+        token
+      );
       setLateResidents(data.late_residents);
       setLateToday(data.today);
       setLateCutoff(data.cutoff_day);
@@ -226,7 +228,7 @@ export default function TreasurerPage() {
       setLateLoading(false);
     }
   }
-  
+
   async function handleNotifyAllLate() {
     try {
       setNotifyLoading(true);
@@ -246,7 +248,6 @@ export default function TreasurerPage() {
       setNotifyLoading(false);
     }
   }
-
 
   function handleSearchChange(value: string) {
     setSearch(value);
@@ -423,19 +424,19 @@ export default function TreasurerPage() {
   }
 
   function buildWhatsAppLink(resident: LateResident) {
-  if (!resident.phone) return "#";
+    if (!resident.phone) return "#";
 
-  const cleanPhone = resident.phone.replace(/[^0-9]/g, "");
-  const message = `السلام عليكم،
+    const cleanPhone = resident.phone.replace(/[^0-9]/g, "");
+    const message = `السلام عليكم،
 هذا تنبيه من اتحاد شاغلين مدينة الملاحة الجوية بوجود مديونية صيانة على وحدتكم.
 
 إجمالي المديونية الحالية: ${resident.total_overdue_amount.toFixed(
-    2
-  )} جنيه.
+      2
+    )} جنيه.
 
 برجاء التكرم بالسداد في أقرب وقت، أو التواصل مع أمين الصندوق للاستفسار.`;
-  const encoded = encodeURIComponent(message);
-  return `https://wa.me/${cleanPhone}?text=${encoded}`;
+    const encoded = encodeURIComponent(message);
+    return `https://wa.me/${cleanPhone}?text=${encoded}`;
   }
 
   function printLateResidentsList() {
@@ -465,7 +466,9 @@ export default function TreasurerPage() {
           <tr>
             <td>${idx + 1}</td>
             <td>${r.full_name}</td>
-            <td>${r.building ?? "-"}/${r.floor ?? "-"}/${r.apartment ?? "-"}</td>
+            <td>${r.building ?? "-"}/${r.floor ?? "-"}/${
+          r.apartment ?? "-"
+        }</td>
             <td>${r.total_overdue_amount.toFixed(2)}</td>
             <td>${flags.join(" - ") || "-"}</td>
             <td>${months}</td>
@@ -518,42 +521,6 @@ export default function TreasurerPage() {
     <main className="min-h-screen bg-brand-beige p-4" dir="rtl">
       <DashboardHeader title="لوحة تحكم أمين الصندوق" />
 
-      {/* Summary Cards (always visible) */}
-      {summary && (
-        <div className="max-w-6xl mx-auto mb-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="bg-white rounded-lg shadow-sm p-3">
-              <div className="text-xs text-slate-600">رصيد الاتحاد الحالي</div>
-              <div className="text-lg font-bold text-slate-800 mt-1">
-                {summary.union_balance.toFixed(2)} جنيه
-              </div>
-            </div>
-            <div className="bg-white rounded-lg shadow-sm p-3">
-              <div className="text-xs text-slate-600">
-                تحصيل شهر {new Date().getMonth() + 1}
-              </div>
-              <div className="text-lg font-bold text-slate-800 mt-1">
-                {summary.this_month_collected.toFixed(2)} جنيه
-              </div>
-            </div>
-            <div className="bg-white rounded-lg shadow-sm p-3">
-              <div className="text-xs text-slate-600">تحصيل اليوم</div>
-              <div className="text-lg font-bold text-slate-800 mt-1">
-                {summary.today_collected.toFixed(2)} جنيه
-              </div>
-            </div>
-            <div className="bg-white rounded-lg shadow-sm p-3">
-              <div className="text-xs text-slate-600">
-                فواتير مدفوعة / إجمالي
-              </div>
-              <div className="text-lg font-bold text-slate-800 mt-1">
-                {summary.paid_invoices} / {summary.total_invoices}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="max-w-6xl mx-auto space-y-4">
         {/* Tabs */}
         <div className="bg-white rounded-xl shadow-sm p-2 flex flex-wrap gap-2 text-sm">
@@ -596,6 +563,16 @@ export default function TreasurerPage() {
             }`}
           >
             السكان المتأخرين
+          </button>
+          <button
+            onClick={() => setActiveTab("DASHBOARD")}
+            className={`px-3 py-2 rounded-lg ${
+              activeTab === "DASHBOARD"
+                ? "bg-brand-cyan text-white"
+                : "bg-slate-100 text-slate-700"
+            }`}
+          >
+            لوحة الإحصائيات المتقدمة
           </button>
         </div>
 
@@ -678,7 +655,9 @@ export default function TreasurerPage() {
                         </div>
 
                         <div className="text-xs mt-1">
-                          <span className="text-slate-600">رصيد مطلوب تسويته: </span>
+                          <span className="text-slate-600">
+                            رصيد مطلوب تسويته:{" "}
+                          </span>
                           <span
                             className={
                               admin.summary.outstanding_amount > 0
@@ -964,6 +943,44 @@ export default function TreasurerPage() {
         {/* ============ TAB 3: Ledger & Stats ============ */}
         {activeTab === "LEDGER" && (
           <div className="space-y-4">
+            {/* 4 original summary cards – now ONLY here */}
+            {summary && (
+              <div className="max-w-6xl mx-auto mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="bg-white rounded-lg shadow-sm p-3">
+                    <div className="text-xs text-slate-600">
+                      رصيد الاتحاد الحالي
+                    </div>
+                    <div className="text-lg font-bold text-slate-800 mt-1">
+                      {summary.union_balance.toFixed(2)} جنيه
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-lg shadow-sm p-3">
+                    <div className="text-xs text-slate-600">
+                      تحصيل شهر {new Date().getMonth() + 1}
+                    </div>
+                    <div className="text-lg font-bold text-slate-800 mt-1">
+                      {summary.this_month_collected.toFixed(2)} جنيه
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-lg shadow-sm p-3">
+                    <div className="text-xs text-slate-600">تحصيل اليوم</div>
+                    <div className="text-lg font-bold text-slate-800 mt-1">
+                      {summary.today_collected.toFixed(2)} جنيه
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-lg shadow-sm p-3">
+                    <div className="text-xs text-slate-600">
+                      فواتير مدفوعة / إجمالي
+                    </div>
+                    <div className="text-lg font-bold text-slate-800 mt-1">
+                      {summary.paid_invoices} / {summary.total_invoices}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="bg-white rounded-xl shadow-sm p-3">
               <h2 className="text-sm font-semibold text-slate-800 mb-2">
                 إحصائيات دفتر الاتحاد
@@ -1076,11 +1093,9 @@ export default function TreasurerPage() {
                   قائمة السكان المتأخرين عن السداد
                 </h2>
                 <p className="text-xs text-slate-600">
-                  يظهر هنا أي ساكن:
-                  {" "}
-                  لم يدفع بعد اليوم الخامس من الشهر الحالي،
-                  أو عليه مديونية لأكثر من ٣ أشهر،
-                  أو قام بسداد جزئي فقط.
+                  يظهر هنا أي ساكن: لم يدفع بعد اليوم الخامس من الشهر
+                  الحالي، أو عليه مديونية لأكثر من ٣ أشهر، أو قام بسداد جزئي
+                  فقط.
                 </p>
                 {lateToday && (
                   <p className="text-xs text-slate-500 mt-1">
@@ -1107,7 +1122,9 @@ export default function TreasurerPage() {
                   disabled={notifyLoading}
                   className="px-3 py-2 rounded-lg bg-green-600 text-white text-xs sm:text-sm disabled:opacity-60"
                 >
-                  {notifyLoading ? "جارٍ إرسال الإشعارات..." : "إرسال إشعارات للسكان المتأخرين"}
+                  {notifyLoading
+                    ? "جارٍ إرسال الإشعارات..."
+                    : "إرسال إشعارات للسكان المتأخرين"}
                 </button>
               </div>
             </div>
@@ -1159,8 +1176,8 @@ export default function TreasurerPage() {
                             {r.full_name}
                           </div>
                           <div className="text-xs text-slate-600 mt-1">
-                            عمارة {r.building ?? "-"} – دور {r.floor ?? "-"} – شقة{" "}
-                            {r.apartment ?? "-"}
+                            عمارة {r.building ?? "-"} – دور {r.floor ?? "-"} –
+                            شقة {r.apartment ?? "-"}
                           </div>
                           {r.phone && (
                             <div className="text-xs text-slate-600 mt-1">
@@ -1169,7 +1186,9 @@ export default function TreasurerPage() {
                           )}
                         </div>
                         <div className="text-sm text-right">
-                          <div className="text-xs text-slate-600">إجمالي المديونية</div>
+                          <div className="text-xs text-slate-600">
+                            إجمالي المديونية
+                          </div>
                           <div className="text-lg font-bold text-red-700">
                             {r.total_overdue_amount.toFixed(2)} جنيه
                           </div>
@@ -1227,6 +1246,175 @@ export default function TreasurerPage() {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ============ TAB 5: Advanced Dashboard ============ */}
+        {activeTab === "DASHBOARD" && (
+          <div className="space-y-4">
+            {/* Header */}
+            <div className="bg-white rounded-xl shadow-sm p-3">
+              <h2 className="text-sm font-semibold text-slate-800 mb-1">
+                لوحة الإحصائيات المتقدمة
+              </h2>
+              <p className="text-xs text-slate-600">
+                هذه الصفحة تعرض رؤية شاملة عن حالة الاتحاد، التحصيل، المصروفات،
+                الفواتير، والمتأخرات بشكل مبسط وسهل القراءة.
+              </p>
+            </div>
+
+            {/* Summary Big Cards */}
+            {summary && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white rounded-xl shadow p-4 flex flex-col items-start">
+                  <div className="text-xs text-slate-500">إجمالي التحصيل</div>
+                  <div className="text-2xl font-bold text-emerald-700">
+                    {summary.total_collected.toFixed(2)} جنيه
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow p-4 flex flex-col items-start">
+                  <div className="text-xs text-slate-500">إجمالي المصروفات</div>
+                  <div className="text-2xl font-bold text-red-700">
+                    {summary.total_expenses?.toFixed(2) ?? 0} جنيه
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow p-4 flex flex-col items-start">
+                  <div className="text-xs text-slate-500">الرصيد النهائي</div>
+                  <div className="text-2xl font-bold text-indigo-700">
+                    {summary.union_balance.toFixed(2)} جنيه
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow p-4 flex flex-col items-start">
+                  <div className="text-xs text-slate-500">فواتير مدفوعة</div>
+                  <div className="text-2xl font-bold text-indigo-700">
+                    {summary.paid_invoices} / {summary.total_invoices}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Advanced Stats Blocks */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Overdue Residents Highlight */}
+              <div className="bg-white rounded-xl shadow p-4">
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                  أعلى ٥ وحدات من حيث المديونية
+                </h3>
+
+                {lateResidents.length === 0 ? (
+                  <p className="text-sm text-slate-600">
+                    لا يوجد سكان متأخرين.
+                  </p>
+                ) : (
+                  <div className="space-y-2 text-sm">
+                    {lateResidents
+                      .slice()
+                      .sort(
+                        (a, b) =>
+                          b.total_overdue_amount - a.total_overdue_amount
+                      )
+                      .slice(0, 5)
+                      .map((r) => (
+                        <div
+                          key={r.user_id}
+                          className="border rounded-lg p-3 bg-slate-50"
+                        >
+                          <div className="flex justify-between">
+                            <span className="font-semibold">
+                              {r.full_name}
+                            </span>
+                            <span className="font-bold text-red-700">
+                              {r.total_overdue_amount.toFixed(2)} جنيه
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-600">
+                            عمارة {r.building} – دور {r.floor} – شقة{" "}
+                            {r.apartment}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Admin Collection Performance */}
+              <div className="bg-white rounded-xl shadow p-4">
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                  أفضل ٥ مسؤولي تحصيل
+                </h3>
+
+                {admins.length === 0 ? (
+                  <p className="text-sm text-slate-600">
+                    لا يوجد بيانات تحصيل حتى الآن.
+                  </p>
+                ) : (
+                  <div className="space-y-2 text-sm">
+                    {admins
+                      .slice()
+                      .sort(
+                        (a, b) =>
+                          b.summary.total_amount - a.summary.total_amount
+                      )
+                      .slice(0, 5)
+                      .map((a) => (
+                        <div
+                          key={a.id}
+                          className="border rounded-lg p-3 bg-slate-50"
+                        >
+                          <div className="flex justify-between">
+                            <span className="font-semibold">
+                              {a.full_name}
+                            </span>
+                            <span className="font-bold text-emerald-700">
+                              {a.summary.total_amount.toFixed(2)} جنيه
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-600">
+                            {a.username}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Mini Indicators */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white rounded-xl shadow p-4">
+                <div className="text-xs text-slate-600">تحصيل اليوم</div>
+                <div className="text-xl font-bold text-indigo-700 mt-1">
+                  {summary?.today_collected.toFixed(2)} جنيه
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow p-4">
+                <div className="text-xs text-slate-600">
+                  تحصيل الشهر الحالي
+                </div>
+                <div className="text-xl font-bold text-indigo-700 mt-1">
+                  {summary?.this_month_collected.toFixed(2)} جنيه
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow p-4">
+                <div className="text-xs text-slate-600">
+                  نسبة الفواتير المدفوعة
+                </div>
+                <div className="text-xl font-bold text-emerald-700 mt-1">
+                  {summary && summary.total_invoices > 0
+                    ? (
+                        (summary.paid_invoices / summary.total_invoices) *
+                        100
+                      ).toFixed(1)
+                    : 0}
+                  %
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
