@@ -32,8 +32,9 @@ export default function ResidentLoginPage() {
       localStorage.setItem("role", data.user.role);
 
       // Residents go to /resident, any non-resident (if used here) follow same logic as before
-      if (
-        data.user.role === "SUPERADMIN" ||
+      if (data.user.role === "SUPERADMIN") {
+        router.push("/superadmin");
+      } else if (
         data.user.role === "ADMIN" ||
         data.user.role === "ONLINE_ADMIN"
       ) {

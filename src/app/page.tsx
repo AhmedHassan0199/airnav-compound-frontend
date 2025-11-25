@@ -35,7 +35,7 @@ export default function HomePage() {
             onClick={() => router.push("/login/admin")}
             className="w-full bg-white border border-[#00A9B7] text-[#00A9B7] hover:bg-[#E0F5F7] py-3 rounded-lg text-lg font-semibold transition-all duration-200"
           >
-            دخول كموظف (أدمن / أمين خزينة)
+            دخول كموظف (مسؤول تحصيل / أمين خزينة)
           </button>
         </div>
       </div>

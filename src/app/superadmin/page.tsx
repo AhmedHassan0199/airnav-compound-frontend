@@ -4,7 +4,7 @@ import DashboardHeader from "@/components/DashboardHeader";
 import { useRouter } from "next/navigation";
 import { useRequireAuth } from "@/lib/auth";
 
-export default function SuperadminUsersHomePage() {
+export default function SuperadminHomePage() {
   const router = useRouter();
   const { user, loading: authLoading } = useRequireAuth(["SUPERADMIN"]);
 
@@ -25,32 +25,37 @@ export default function SuperadminUsersHomePage() {
 
   return (
     <main className="min-h-screen bg-brand-beige p-4" dir="rtl">
-      <DashboardHeader title="إدارة المستخدمين" />
-
+      <DashboardHeader title="لوحة تحكم المشرف العام" />
       <div className="max-w-xl mx-auto space-y-4">
         <div className="bg-white rounded-xl shadow-sm p-4">
           <h1 className="text-lg font-bold text-slate-800 mb-2">
-            إنشاء مستخدمين
+            الصفحة الرئيسية للمشرف العام
           </h1>
           <p className="text-sm text-slate-600">
-            اختر نوع المستخدم الذي تريد إنشاءه: ساكن أو موظف (أدمن / أمين
-            صندوق / مشرف عام / تحصيل أونلاين).
+            اختر العملية التي تريد القيام بها:
           </p>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
           <button
-            onClick={() => router.push("/superadmin/users/resident")}
+            onClick={() => router.push("/superadmin/admin-buildings")}
             className="w-full px-4 py-3 bg-brand-cyan text-white rounded-lg text-sm font-semibold hover:bg-[#008B9A] transition-colors"
           >
-            إنشاء مستخدم ساكن
+            ١- توزيع المباني على المسؤولين
           </button>
 
           <button
             onClick={() => router.push("/superadmin/users/admin")}
             className="w-full px-4 py-3 bg-white border border-brand-cyan text-brand-cyan rounded-lg text-sm font-semibold hover:bg-[#E0F5F7] transition-colors"
           >
-            إنشاء مستخدم موظف (أدمن / أمين صندوق / مشرف عام / تحصيل أونلاين)
+            ٢- إنشاء مستخدم موظف جديد
+          </button>
+
+          <button
+            onClick={() => router.push("/superadmin/users/resident")}
+            className="w-full px-4 py-3 bg-white border border-brand-cyan text-brand-cyan rounded-lg text-sm font-semibold hover:bg-[#E0F5F7] transition-colors"
+          >
+            ٣- إنشاء مستخدم ساكن جديد
           </button>
         </div>
       </div>

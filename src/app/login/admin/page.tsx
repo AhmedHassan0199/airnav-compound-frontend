@@ -28,8 +28,10 @@ export default function AdminLoginPage() {
       localStorage.setItem("username", data.user.username);
       localStorage.setItem("role", data.user.role);
 
-      if (
-        data.user.role === "SUPERADMIN" ||
+      if (data.user.role === "SUPERADMIN") {
+        router.push("/superadmin");
+      } 
+      else if (
         data.user.role === "ADMIN" ||
         data.user.role === "ONLINE_ADMIN"
       ) {
