@@ -15,6 +15,25 @@ import {
   treasurerNotifyLateResidents,
 } from "@/lib/api";
 
+// 🧮 Charts
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Legend,
+  BarChart,
+  Bar,
+} from "recharts";
+
+const PIE_COLORS = ["#22c55e", "#f97316", "#0ea5e9", "#ef4444"];
+
 type AdminSummary = {
   total_amount: number;
   settled_amount: number;
@@ -107,6 +126,8 @@ type LateResidentsResponse = {
   late_residents: LateResident[];
 };
 
+type TabType = "SETTLEMENT" | "EXPENSES" | "LEDGER" | "LATE" | "STATS";
+
 export default function TreasurerPage() {
   useRequireAuth(["TREASURER"]);
 
@@ -149,8 +170,6 @@ export default function TreasurerPage() {
   const [notifyMsg, setNotifyMsg] = useState<string | null>(null);
   const [notifyError, setNotifyError] = useState<string | null>(null);
 
-  // Tabs
-  type TabType = "SETTLEMENT" | "EXPENSES" | "LEDGER" | "LATE" | "DASHBOARD";
   const [activeTab, setActiveTab] = useState<TabType>("SETTLEMENT");
 
   // Load initial data
@@ -405,7 +424,7 @@ export default function TreasurerPage() {
     }
   }
 
-  // Stats from ledger (for tab 3)
+  // Stats from ledger for ledger tab
   const ledgerStats = useMemo(() => {
     let totalDebit = 0;
     let totalCredit = 0;
@@ -419,9 +438,65 @@ export default function TreasurerPage() {
     };
   }, [ledger]);
 
-  if (!summary && !admins.length && !loadingAdmins) {
-    // first load placeholder (optional)
-  }
+  // ---------- Advanced stats data for charts ----------
+  const invoicesPieData = useMemo(() => {
+    if (!summary) return [];
+    return [
+      {
+        name: "فواتير مدفوعة",
+        value: summary.paid_invoices,
+      },
+      {
+        name: "فواتير غير مدفوعة",
+        value: summary.unpaid_invoices,
+      },
+    ];
+  }, [summary]);
+
+  const balanceLineData = useMemo(() => {
+    // take last 20 entries (to avoid crazy long line)
+    const last = ledger.slice(-20);
+    return last.map((e) => ({
+      label: e.date,
+      balance: e.balance_after,
+      credit: e.credit,
+      debit: e.debit,
+    }));
+  }, [ledger]);
+
+  const topAdminsData = useMemo(() => {
+    if (!admins.length) return [];
+    return admins
+      .slice()
+      .sort(
+        (a, b) => b.summary.total_amount - a.summary.total_amount
+      )
+      .slice(0, 5)
+      .map((a) => ({
+        name: a.full_name || a.username,
+        collected: a.summary.total_amount,
+        outstanding: a.summary.outstanding_amount,
+      }));
+  }, [admins]);
+
+  const lateResidentsPieData = useMemo(() => {
+    if (!lateResidents.length) return [];
+    const current = lateResidents.filter(
+      (r) => r.status_flags.current_month_late
+    ).length;
+    const moreThan3 = lateResidents.filter(
+      (r) => r.status_flags.more_than_3_months
+    ).length;
+    const partial = lateResidents.filter(
+      (r) => r.status_flags.partial_payments
+    ).length;
+
+    return [
+      { name: "متأخر عن الشهر الحالي", value: current },
+      { name: "مديونية أكثر من ٣ أشهر", value: moreThan3 },
+      { name: "سداد جزئي", value: partial },
+    ].filter((x) => x.value > 0);
+  }, [lateResidents]);
 
   function buildWhatsAppLink(resident: LateResident) {
     if (!resident.phone) return "#";
@@ -466,9 +541,7 @@ export default function TreasurerPage() {
           <tr>
             <td>${idx + 1}</td>
             <td>${r.full_name}</td>
-            <td>${r.building ?? "-"}/${r.floor ?? "-"}/${
-          r.apartment ?? "-"
-        }</td>
+            <td>${r.building ?? "-"}/${r.floor ?? "-"}/${r.apartment ?? "-"}</td>
             <td>${r.total_overdue_amount.toFixed(2)}</td>
             <td>${flags.join(" - ") || "-"}</td>
             <td>${months}</td>
@@ -521,7 +594,7 @@ export default function TreasurerPage() {
     <main className="min-h-screen bg-brand-beige p-4" dir="rtl">
       <DashboardHeader title="لوحة تحكم أمين الصندوق" />
 
-      <div className="max-w-6xl mx-auto space-y-4">
+      <div className="max-w-6xl mx-auto space-y-4 mt-2">
         {/* Tabs */}
         <div className="bg-white rounded-xl shadow-sm p-2 flex flex-wrap gap-2 text-sm">
           <button
@@ -565,10 +638,10 @@ export default function TreasurerPage() {
             السكان المتأخرين
           </button>
           <button
-            onClick={() => setActiveTab("DASHBOARD")}
+            onClick={() => setActiveTab("STATS")}
             className={`px-3 py-2 rounded-lg ${
-              activeTab === "DASHBOARD"
-                ? "bg-brand-cyan text-white"
+              activeTab === "STATS"
+                ? "bg-emerald-600 text-white"
                 : "bg-slate-100 text-slate-700"
             }`}
           >
@@ -943,9 +1016,9 @@ export default function TreasurerPage() {
         {/* ============ TAB 3: Ledger & Stats ============ */}
         {activeTab === "LEDGER" && (
           <div className="space-y-4">
-            {/* 4 original summary cards – now ONLY here */}
+            {/* Summary cards only here */}
             {summary && (
-              <div className="max-w-6xl mx-auto mb-4">
+              <div className="mb-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <div className="bg-white rounded-lg shadow-sm p-3">
                     <div className="text-xs text-slate-600">
@@ -1093,9 +1166,8 @@ export default function TreasurerPage() {
                   قائمة السكان المتأخرين عن السداد
                 </h2>
                 <p className="text-xs text-slate-600">
-                  يظهر هنا أي ساكن: لم يدفع بعد اليوم الخامس من الشهر
-                  الحالي، أو عليه مديونية لأكثر من ٣ أشهر، أو قام بسداد جزئي
-                  فقط.
+                  يظهر هنا أي ساكن: لم يدفع بعد اليوم الخامس من الشهر الحالي، أو
+                  عليه مديونية لأكثر من ٣ أشهر، أو قام بسداد جزئي فقط.
                 </p>
                 {lateToday && (
                   <p className="text-xs text-slate-500 mt-1">
@@ -1176,8 +1248,8 @@ export default function TreasurerPage() {
                             {r.full_name}
                           </div>
                           <div className="text-xs text-slate-600 mt-1">
-                            عمارة {r.building ?? "-"} – دور {r.floor ?? "-"} –
-                            شقة {r.apartment ?? "-"}
+                            عمارة {r.building ?? "-"} – دور {r.floor ?? "-"} – شقة{" "}
+                            {r.apartment ?? "-"}
                           </div>
                           {r.phone && (
                             <div className="text-xs text-slate-600 mt-1">
@@ -1249,169 +1321,173 @@ export default function TreasurerPage() {
           </div>
         )}
 
-        {/* ============ TAB 5: Advanced Dashboard ============ */}
-        {activeTab === "DASHBOARD" && (
+        {/* ============ TAB 5: Advanced Stats Dashboard ============ */}
+        {activeTab === "STATS" && (
           <div className="space-y-4">
-            {/* Header */}
-            <div className="bg-white rounded-xl shadow-sm p-3">
-              <h2 className="text-sm font-semibold text-slate-800 mb-1">
+            <div className="bg-white rounded-xl shadow-sm p-4">
+              <h2 className="text-lg font-bold text-slate-800 mb-1">
                 لوحة الإحصائيات المتقدمة
               </h2>
-              <p className="text-xs text-slate-600">
-                هذه الصفحة تعرض رؤية شاملة عن حالة الاتحاد، التحصيل، المصروفات،
-                الفواتير، والمتأخرات بشكل مبسط وسهل القراءة.
+              <p className="text-sm text-slate-600">
+                هذه الصفحة تعطي نظرة بصرية سريعة عن حالة الاتحاد: التحصيل،
+                المصروفات، الفواتير، والسكان المتأخرين.
               </p>
             </div>
 
-            {/* Summary Big Cards */}
-            {summary && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white rounded-xl shadow p-4 flex flex-col items-start">
-                  <div className="text-xs text-slate-500">إجمالي التحصيل</div>
-                  <div className="text-2xl font-bold text-emerald-700">
-                    {summary.total_collected.toFixed(2)} جنيه
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-xl shadow p-4 flex flex-col items-start">
-                  <div className="text-xs text-slate-500">إجمالي المصروفات</div>
-                  <div className="text-2xl font-bold text-red-700">
-                    {summary.total_expenses?.toFixed(2) ?? 0} جنيه
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-xl shadow p-4 flex flex-col items-start">
-                  <div className="text-xs text-slate-500">الرصيد النهائي</div>
-                  <div className="text-2xl font-bold text-indigo-700">
-                    {summary.union_balance.toFixed(2)} جنيه
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-xl shadow p-4 flex flex-col items-start">
-                  <div className="text-xs text-slate-500">فواتير مدفوعة</div>
-                  <div className="text-2xl font-bold text-indigo-700">
-                    {summary.paid_invoices} / {summary.total_invoices}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Advanced Stats Blocks */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Overdue Residents Highlight */}
-              <div className="bg-white rounded-xl shadow p-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Pie: paid vs unpaid invoices */}
+              <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col">
                 <h3 className="text-sm font-semibold text-slate-800 mb-2">
-                  أعلى ٥ وحدات من حيث المديونية
+                  توزيع الفواتير (مدفوعة / غير مدفوعة)
                 </h3>
-
-                {lateResidents.length === 0 ? (
-                  <p className="text-sm text-slate-600">
-                    لا يوجد سكان متأخرين.
+                {(!summary || !invoicesPieData.length) ? (
+                  <p className="text-xs text-slate-500">
+                    لا توجد بيانات فواتير كافية لعرض الرسم.
                   </p>
                 ) : (
-                  <div className="space-y-2 text-sm">
-                    {lateResidents
-                      .slice()
-                      .sort(
-                        (a, b) =>
-                          b.total_overdue_amount - a.total_overdue_amount
-                      )
-                      .slice(0, 5)
-                      .map((r) => (
-                        <div
-                          key={r.user_id}
-                          className="border rounded-lg p-3 bg-slate-50"
+                  <div className="w-full h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={invoicesPieData}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          label
                         >
-                          <div className="flex justify-between">
-                            <span className="font-semibold">
-                              {r.full_name}
-                            </span>
-                            <span className="font-bold text-red-700">
-                              {r.total_overdue_amount.toFixed(2)} جنيه
-                            </span>
-                          </div>
-                          <div className="text-xs text-slate-600">
-                            عمارة {r.building} – دور {r.floor} – شقة{" "}
-                            {r.apartment}
-                          </div>
-                        </div>
-                      ))}
+                          {invoicesPieData.map((_, idx) => (
+                            <Cell
+                              key={idx}
+                              fill={PIE_COLORS[idx % PIE_COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
                 )}
               </div>
 
-              {/* Admin Collection Performance */}
-              <div className="bg-white rounded-xl shadow p-4">
+              {/* Line: union balance over time */}
+              <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col lg:col-span-2">
                 <h3 className="text-sm font-semibold text-slate-800 mb-2">
-                  أفضل ٥ مسؤولي تحصيل
+                  تطور رصيد الاتحاد مع الوقت
                 </h3>
-
-                {admins.length === 0 ? (
-                  <p className="text-sm text-slate-600">
-                    لا يوجد بيانات تحصيل حتى الآن.
+                {!balanceLineData.length ? (
+                  <p className="text-xs text-slate-500">
+                    لا توجد حركات كافية لعرض الرسم.
                   </p>
                 ) : (
-                  <div className="space-y-2 text-sm">
-                    {admins
-                      .slice()
-                      .sort(
-                        (a, b) =>
-                          b.summary.total_amount - a.summary.total_amount
-                      )
-                      .slice(0, 5)
-                      .map((a) => (
-                        <div
-                          key={a.id}
-                          className="border rounded-lg p-3 bg-slate-50"
-                        >
-                          <div className="flex justify-between">
-                            <span className="font-semibold">
-                              {a.full_name}
-                            </span>
-                            <span className="font-bold text-emerald-700">
-                              {a.summary.total_amount.toFixed(2)} جنيه
-                            </span>
-                          </div>
-                          <div className="text-xs text-slate-600">
-                            {a.username}
-                          </div>
-                        </div>
-                      ))}
+                  <div className="w-full h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={balanceLineData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <Tooltip />
+                        <Legend />
+                        <Line
+                          type="monotone"
+                          dataKey="balance"
+                          name="الرصيد بعد القيد"
+                          stroke="#0f766e"
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Mini Indicators */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white rounded-xl shadow p-4">
-                <div className="text-xs text-slate-600">تحصيل اليوم</div>
-                <div className="text-xl font-bold text-indigo-700 mt-1">
-                  {summary?.today_collected.toFixed(2)} جنيه
-                </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Bar: top collectors */}
+              <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col">
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                  أفضل مسؤولي تحصيل حسب إجمالي التحصيل
+                </h3>
+                {!topAdminsData.length ? (
+                  <p className="text-xs text-slate-500">
+                    لا توجد بيانات لمسؤولي التحصيل حتى الآن.
+                  </p>
+                ) : (
+                  <div className="w-full h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={topAdminsData}
+                        margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="name"
+                          tick={{ fontSize: 10 }}
+                          angle={-20}
+                          textAnchor="end"
+                          interval={0}
+                        />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <Tooltip />
+                        <Legend />
+                        <Bar
+                          dataKey="collected"
+                          name="إجمالي التحصيل"
+                          fill="#22c55e"
+                        />
+                        <Bar
+                          dataKey="outstanding"
+                          name="الرصيد المتبقي"
+                          fill="#f97316"
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </div>
 
-              <div className="bg-white rounded-xl shadow p-4">
-                <div className="text-xs text-slate-600">
-                  تحصيل الشهر الحالي
-                </div>
-                <div className="text-xl font-bold text-indigo-700 mt-1">
-                  {summary?.this_month_collected.toFixed(2)} جنيه
-                </div>
-              </div>
+              {/* Pie: late residents segments */}
+              <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col">
+                <h3 className="text-sm font-semibold text-slate-800 mb-2">
+                  أنواع تأخير السكان عن السداد
+                </h3>
+                {!lateResidentsPieData.length ? (
+                  <p className="text-xs text-slate-500">
+                    لا توجد حالات تأخير مسجلة حالياً.
+                  </p>
+                ) : (
+                  <div className="w-full h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={lateResidentsPieData}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          label
+                        >
+                          {lateResidentsPieData.map((_, idx) => (
+                            <Cell
+                              key={idx}
+                              fill={PIE_COLORS[idx % PIE_COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
 
-              <div className="bg-white rounded-xl shadow p-4">
-                <div className="text-xs text-slate-600">
-                  نسبة الفواتير المدفوعة
-                </div>
-                <div className="text-xl font-bold text-emerald-700 mt-1">
-                  {summary && summary.total_invoices > 0
-                    ? (
-                        (summary.paid_invoices / summary.total_invoices) *
-                        100
-                      ).toFixed(1)
-                    : 0}
-                  %
+                <div className="mt-3 text-xs text-slate-600">
+                  إجمالي السكان المتأخرين:{" "}
+                  <span className="font-semibold">
+                    {lateResidents.length}
+                  </span>
                 </div>
               </div>
             </div>
