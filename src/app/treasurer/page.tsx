@@ -558,7 +558,7 @@ export default function TreasurerPage() {
 
       {/* Summary cards only for Ledger & Stats tabs */}
       {summary &&
-        (activeTab === "LEDGER" || activeTab === "STATS") && (
+        (activeTab === "STATS") && (
           <div className="max-w-6xl mx-auto mb-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="bg-white rounded-lg shadow-sm p-3">
