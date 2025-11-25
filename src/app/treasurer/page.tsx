@@ -17,7 +17,6 @@ import {
 
 // 🧮 Charts
 import {
-  ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
@@ -1345,28 +1344,26 @@ export default function TreasurerPage() {
                     لا توجد بيانات فواتير كافية لعرض الرسم.
                   </p>
                 ) : (
-                  <div className="w-full h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={invoicesPieData}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={80}
-                          label
-                        >
-                          {invoicesPieData.map((_, idx) => (
-                            <Cell
-                              key={idx}
-                              fill={PIE_COLORS[idx % PIE_COLORS.length]}
-                            />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
+                  <div className="w-full overflow-x-auto">
+                    <PieChart width={280} height={240}>
+                      <Pie
+                        data={invoicesPieData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        label
+                      >
+                        {invoicesPieData.map((_, idx) => (
+                          <Cell
+                            key={idx}
+                            fill={PIE_COLORS[idx % PIE_COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
                   </div>
                 )}
               </div>
@@ -1381,25 +1378,28 @@ export default function TreasurerPage() {
                     لا توجد حركات كافية لعرض الرسم.
                   </p>
                 ) : (
-                  <div className="w-full h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={balanceLineData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-                        <YAxis tick={{ fontSize: 10 }} />
-                        <Tooltip />
-                        <Legend />
-                        <Line
-                          type="monotone"
-                          dataKey="balance"
-                          name="الرصيد بعد القيد"
-                          stroke="#0f766e"
-                          strokeWidth={2}
-                          dot={false}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
+                <div className="w-full overflow-x-auto">
+                  <LineChart
+                    data={balanceLineData}
+                    width={600}
+                    height={260}
+                    margin={{ top: 10, right: 20, left: 0, bottom: 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <Tooltip />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="balance"
+                      name="الرصيد بعد القيد"
+                      stroke="#0f766e"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </div>
                 )}
               </div>
             </div>
@@ -1415,36 +1415,36 @@ export default function TreasurerPage() {
                     لا توجد بيانات لمسؤولي التحصيل حتى الآن.
                   </p>
                 ) : (
-                  <div className="w-full h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={topAdminsData}
-                        margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="name"
-                          tick={{ fontSize: 10 }}
-                          angle={-20}
-                          textAnchor="end"
-                          interval={0}
-                        />
-                        <YAxis tick={{ fontSize: 10 }} />
-                        <Tooltip />
-                        <Legend />
-                        <Bar
-                          dataKey="collected"
-                          name="إجمالي التحصيل"
-                          fill="#22c55e"
-                        />
-                        <Bar
-                          dataKey="outstanding"
-                          name="الرصيد المتبقي"
-                          fill="#f97316"
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                <div className="w-full overflow-x-auto">
+                  <BarChart
+                    data={topAdminsData}
+                    width={550}
+                    height={260}
+                    margin={{ top: 10, right: 20, left: 0, bottom: 40 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fontSize: 10 }}
+                      angle={-20}
+                      textAnchor="end"
+                      interval={0}
+                    />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar
+                      dataKey="collected"
+                      name="إجمالي التحصيل"
+                      fill="#22c55e"
+                    />
+                    <Bar
+                      dataKey="outstanding"
+                      name="الرصيد المتبقي"
+                      fill="#f97316"
+                    />
+                  </BarChart>
+                </div>
                 )}
               </div>
 
@@ -1458,29 +1458,27 @@ export default function TreasurerPage() {
                     لا توجد حالات تأخير مسجلة حالياً.
                   </p>
                 ) : (
-                  <div className="w-full h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={lateResidentsPieData}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={80}
-                          label
-                        >
-                          {lateResidentsPieData.map((_, idx) => (
-                            <Cell
-                              key={idx}
-                              fill={PIE_COLORS[idx % PIE_COLORS.length]}
-                            />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
+                <div className="w-full overflow-x-auto">
+                  <PieChart width={280} height={240}>
+                    <Pie
+                      data={lateResidentsPieData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      label
+                    >
+                      {lateResidentsPieData.map((_, idx) => (
+                        <Cell
+                          key={idx}
+                          fill={PIE_COLORS[idx % PIE_COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </div>
                 )}
 
                 <div className="mt-3 text-xs text-slate-600">
