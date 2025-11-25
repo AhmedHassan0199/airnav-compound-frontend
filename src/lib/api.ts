@@ -18,17 +18,35 @@ async function apiFetch(input: RequestInfo | URL, init?: RequestInit) {
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://airnav-compound.work.gd/api";
 
-export async function login(username: string, password: string) {
+export async function login(payload: any) {
   const res = await apiFetch(`${API_BASE}/auth/login`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ username, password }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Login failed");
+  }
+
+  return res.json();
+}
+
+export async function loginWithUnit(
+  building: string,
+  floor: string,
+  apartment: string,
+  password: string
+) {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ building, floor, apartment, password }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
     throw new Error(data.message || "Login failed");
   }
 
