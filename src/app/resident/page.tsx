@@ -8,9 +8,11 @@ import {
   getResidentInvoices,
   API_BASE,
   submitInstapayPayment,
+  getNotificationStatus,
+  registerNotificationToken,
 } from "@/lib/api";
-import EnableNotificationsButton from "@/components/EnableNotificationsButton";
-import { TestNotificationButton } from "@/components/TestNotificationsButton";
+import { getFirebaseMessaging } from "@/lib/firebase";
+import { getToken } from "firebase/messaging";
 
 const INSTAPAY_LINK = process.env.NEXT_PUBLIC_INSTAPAY_LINK;
 
@@ -37,7 +39,6 @@ type Invoice = {
   due_date: string | null;
   paid_date: string | null;
   notes: string | null;
-  // if later you add online_payment from backend, it will be safely ignored here
 };
 
 function formatStatus(status: string) {
@@ -97,7 +98,9 @@ function InvoiceCard({
   const isPaid = invoice.status === "PAID";
   const isPendingConfirmation = invoice.status === "PENDING_CONFIRMATION";
   const canPayOnline =
-    invoice.status === "UNPAID" || invoice.status === "PENDING" || invoice.status === "OVERDUE";
+    invoice.status === "UNPAID" ||
+    invoice.status === "PENDING" ||
+    invoice.status === "OVERDUE";
 
   const statusColor =
     invoice.status === "PAID"
@@ -113,9 +116,7 @@ function InvoiceCard({
       alert("لم يتم ضبط رابط إنستا باي في إعدادات النظام.");
       return;
     }
-    // افتح إنستا باي في تبويب جديد / التطبيق على الموبايل
     window.open(INSTAPAY_LINK, "_blank");
-    // مبدئياً نملأ المبلغ بقيمة الفاتورة (يمكن تعديلها)
     if (!instaAmount) {
       setInstaAmount(invoice.amount.toFixed(2));
     }
@@ -199,7 +200,6 @@ function InvoiceCard({
         <span>{invoice.paid_date || "-"}</span>
       </div>
 
-      {/* Actions + messages */}
       {isPaid ? (
         <button
           onClick={() =>
@@ -345,6 +345,68 @@ export default function ResidentPage() {
     }
   };
 
+  // 🔔 Auto-enable notifications if not already enabled
+  useEffect(() => {
+    if (authLoading) return;
+    if (typeof window === "undefined") return;
+
+    let cancelled = false;
+
+    async function autoEnableNotifications() {
+      try {
+        const status = await getNotificationStatus();
+        if (cancelled) return;
+
+        // If already has a subscription, do nothing
+        if (status?.has_subscription) {
+          return;
+        }
+
+        if (!("Notification" in window)) {
+          return;
+        }
+
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          return;
+        }
+
+        const registration = await navigator.serviceWorker.register(
+          "/firebase-messaging-sw.js"
+        );
+
+        const messaging = await getFirebaseMessaging();
+        if (!messaging) {
+          return;
+        }
+
+        const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+        if (!vapidKey) {
+          return;
+        }
+
+        const fcmToken = await getToken(messaging, {
+          vapidKey,
+          serviceWorkerRegistration: registration,
+        });
+
+        if (!fcmToken) {
+          return;
+        }
+
+        await registerNotificationToken(fcmToken);
+      } catch (err) {
+        console.error("Auto-enable notifications error:", err);
+      }
+    }
+
+    autoEnableNotifications();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading]);
+
   useEffect(() => {
     if (authLoading) return;
     if (typeof window === "undefined") return;
@@ -382,9 +444,7 @@ export default function ResidentPage() {
     <main className="min-h-screen p-4 bg-brand-beige" dir="rtl">
       <DashboardHeader title="حساب الساكن" />
       <div className="max-w-3xl mx-auto space-y-4">
-        {/* Enable notifications button */}
-        <EnableNotificationsButton />
-        <TestNotificationButton />
+        {/* Notifications buttons removed – logic now runs automatically */}
 
         {/* Header / Profile card */}
         <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col sm:flex-row justify-between gap-3">
