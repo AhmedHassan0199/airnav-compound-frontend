@@ -50,6 +50,24 @@ function formatStatus(status: string) {
   return status;
 }
 
+function sortInvoicesForDisplay(invoices: Invoice[]): Invoice[] {
+  return [...invoices].sort((a, b) => {
+    const aPaid = a.status === "PAID";
+    const bPaid = b.status === "PAID";
+
+    // Unpaid first, then paid
+    if (aPaid !== bPaid) {
+      return aPaid ? 1 : -1;
+    }
+
+    // Inside each group, sort by year then month ascending
+    if (a.year !== b.year) {
+      return a.year - b.year;
+    }
+    return a.month - b.month;
+  });
+}
+
 async function downloadInvoicePdf(invoiceId: number, year: number, month: number) {
   const token = localStorage.getItem("access_token");
   if (!token) {
@@ -337,7 +355,7 @@ export default function ResidentPage() {
       ]);
 
       setProfile(p);
-      setInvoices(inv);
+      setInvoices(sortInvoicesForDisplay(inv));
     } catch (err: any) {
       setError(err.message || "حدث خطأ أثناء تحميل البيانات");
     } finally {
@@ -357,7 +375,6 @@ export default function ResidentPage() {
         const status = await getNotificationStatus();
         if (cancelled) return;
 
-        // If already has a subscription, do nothing
         if (status?.has_subscription) {
           return;
         }
@@ -444,8 +461,6 @@ export default function ResidentPage() {
     <main className="min-h-screen p-4 bg-brand-beige" dir="rtl">
       <DashboardHeader title="حساب الساكن" />
       <div className="max-w-3xl mx-auto space-y-4">
-        {/* Notifications buttons removed – logic now runs automatically */}
-
         {/* Header / Profile card */}
         <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col sm:flex-row justify-between gap-3">
           <div>

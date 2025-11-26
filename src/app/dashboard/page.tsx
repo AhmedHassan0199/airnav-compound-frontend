@@ -7,7 +7,7 @@ import {
   adminSearchResidents,
   adminGetResidentInvoices,
   adminCollectPayment,
-  adminCreateInvoice, 
+  adminCreateInvoice,
   adminDeleteInvoice,
   adminGetMySummary,
   adminGetOnlinePaymentsPending,
@@ -56,9 +56,31 @@ type OnlinePaymentItem = {
   created_at: string;
 };
 
+function sortInvoicesForDisplay(invoices: Invoice[]): Invoice[] {
+  return [...invoices].sort((a, b) => {
+    const aPaid = a.status === "PAID";
+    const bPaid = b.status === "PAID";
+
+    // Unpaid first, then paid
+    if (aPaid !== bPaid) {
+      return aPaid ? 1 : -1;
+    }
+
+    // Inside each group, sort by year then month ascending
+    if (a.year !== b.year) {
+      return a.year - b.year;
+    }
+    return a.month - b.month;
+  });
+}
+
 export default function AdminDashboardPage() {
   // SUPERADMIN will also come here later, but for now:
-  const { user, loading: authLoading } = useRequireAuth(["ADMIN", "SUPERADMIN", "ONLINE_ADMIN"]);
+  const { user, loading: authLoading } = useRequireAuth([
+    "ADMIN",
+    "SUPERADMIN",
+    "ONLINE_ADMIN",
+  ]);
 
   const [query, setQuery] = useState("");
   const [residents, setResidents] = useState<Resident[]>([]);
@@ -76,9 +98,12 @@ export default function AdminDashboardPage() {
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+
   // New invoice form state
   const [newMonth, setNewMonth] = useState<string>("");
-  const [newYear, setNewYear] = useState<string>(new Date().getFullYear().toString());
+  const [newYear, setNewYear] = useState<string>(
+    new Date().getFullYear().toString()
+  );
   const [newAmount, setNewAmount] = useState<string>("");
   const [newDueDate, setNewDueDate] = useState<string>("");
   const [newNotes, setNewNotes] = useState<string>("");
@@ -88,17 +113,21 @@ export default function AdminDashboardPage() {
   const [onlinePayments, setOnlinePayments] = useState<OnlinePaymentItem[]>([]);
   const [onlineLoading, setOnlineLoading] = useState(false);
   const [onlineError, setOnlineError] = useState<string | null>(null);
-  const [onlineActionLoadingId, setOnlineActionLoadingId] = useState<number | null>(null);
+  const [onlineActionLoadingId, setOnlineActionLoadingId] = useState<
+    number | null
+  >(null);
   const [onlineLoadedOnce, setOnlineLoadedOnce] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<"collect" | "view" | "profile" | "online">("collect");
+  const [activeTab, setActiveTab] = useState<
+    "collect" | "view" | "profile" | "online"
+  >("collect");
   const [tabInitialized, setTabInitialized] = useState(false);
 
   useEffect(() => {
     if (!authLoading && user && !tabInitialized) {
       if (user.role === "ONLINE_ADMIN") {
         setActiveTab("online");
-        loadOnlinePayments()
+        loadOnlinePayments();
       } else {
         setActiveTab("collect");
       }
@@ -107,7 +136,7 @@ export default function AdminDashboardPage() {
   }, [authLoading, user, tabInitialized]);
 
   // Admin profile summary
-    const [profile, setProfile] = useState<{
+  const [profile, setProfile] = useState<{
     total_amount: number;
     payments_count: number;
     today_amount: number;
@@ -127,10 +156,8 @@ export default function AdminDashboardPage() {
     }[];
   } | null>(null);
 
-
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
-
 
   // Load initial residents
   useEffect(() => {
@@ -177,7 +204,6 @@ export default function AdminDashboardPage() {
     }
   }
 
-
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     await loadResidents(query.trim());
@@ -203,7 +229,6 @@ export default function AdminDashboardPage() {
     }
   }
 
-
   async function handleSelectResident(res: Resident) {
     setSelectedResident(res);
     setInvoices([]);
@@ -216,7 +241,8 @@ export default function AdminDashboardPage() {
       setLoading(true);
       const token = localStorage.getItem("access_token");
       const data = await adminGetResidentInvoices(token, res.id);
-      setInvoices(data.invoices || []);
+      const sorted = sortInvoicesForDisplay(data.invoices || []);
+      setInvoices(sorted);
     } catch (err: any) {
       setError(err.message || "حدث خطأ أثناء تحميل الايصالات");
     } finally {
@@ -287,7 +313,8 @@ export default function AdminDashboardPage() {
 
       if (selectedResident) {
         const data = await adminGetResidentInvoices(token, selectedResident.id);
-        setInvoices(data.invoices || []);
+        const sorted = sortInvoicesForDisplay(data.invoices || []);
+        setInvoices(sorted);
       }
 
       if (collectingInvoice && collectingInvoice.id === inv.id) {
@@ -325,12 +352,13 @@ export default function AdminDashboardPage() {
       });
 
       const data = await adminGetResidentInvoices(token, selectedResident.id);
-      setInvoices(data.invoices || []);
+      const sorted = sortInvoicesForDisplay(data.invoices || []);
+      setInvoices(sorted);
 
       setNewAmount("");
       setNewDueDate("");
       setNewNotes("");
-      // نسيب الشهر/السنة زي ما هما عشان تفضل سريعة لو نفس الفترة
+      // keep month/year to speed repeated creation
     } catch (err: any) {
       alert(err.message || "تعذر إنشاء الايصال");
     } finally {
@@ -359,9 +387,9 @@ export default function AdminDashboardPage() {
         notes: notes || undefined,
       });
 
-      // Refresh invoices for this resident
       const data = await adminGetResidentInvoices(token, selectedResident.id);
-      setInvoices(data.invoices || []);
+      const sorted = sortInvoicesForDisplay(data.invoices || []);
+      setInvoices(sorted);
       setCollectingInvoice(null);
       setAmount("");
       setNotes("");
@@ -374,7 +402,10 @@ export default function AdminDashboardPage() {
 
   if (authLoading) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-brand-beige" dir="rtl">
+      <main
+        className="min-h-screen flex items-center justify-center bg-brand-beige"
+        dir="rtl"
+      >
         <p className="text-sm text-slate-600">جارٍ التحقق من الجلسة...</p>
       </main>
     );
@@ -383,7 +414,10 @@ export default function AdminDashboardPage() {
   // simple placeholder for SUPERADMIN for now
   if (user && user.role === "SUPERADMIN") {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-brand-beige" dir="rtl">
+      <main
+        className="min-h-screen flex items-center justify-center bg-brand-beige"
+        dir="rtl"
+      >
         <div className="bg-white rounded-xl shadow-sm p-6 max-w-lg w-full text-center">
           <h1 className="text-lg font-bold text-slate-800 mb-2">
             لوحة تحكم المشرف العام
@@ -412,32 +446,32 @@ export default function AdminDashboardPage() {
             </p>
           </div>
         </div>
-        
+
         {/* Tabs */}
         <div className="flex gap-2 mt-1">
           {user?.role !== "ONLINE_ADMIN" && (
-          <button
-            onClick={() => setActiveTab("collect")}
-            className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
-              activeTab === "collect"
-                ? "bg-brand-cyan text-white"
-                : "bg-white text-slate-700 border border-slate-200"
-            }`}
-          >
-            تحصيل الصيانة
-          </button>
+            <button
+              onClick={() => setActiveTab("collect")}
+              className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
+                activeTab === "collect"
+                  ? "bg-brand-cyan text-white"
+                  : "bg-white text-slate-700 border border-slate-200"
+              }`}
+            >
+              تحصيل الصيانة
+            </button>
           )}
           {user?.role !== "ONLINE_ADMIN" && (
-          <button
-            onClick={() => setActiveTab("view")}
-            className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
-              activeTab === "view"
-                ? "bg-brand-cyan text-white"
-                : "bg-white text-slate-700 border border-slate-200"
-            }`}
-          >
-            عرض الفواتير وطباعتها
-          </button>
+            <button
+              onClick={() => setActiveTab("view")}
+              className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
+                activeTab === "view"
+                  ? "bg-brand-cyan text-white"
+                  : "bg-white text-slate-700 border border-slate-200"
+              }`}
+            >
+              عرض الفواتير وطباعتها
+            </button>
           )}
           <button
             onClick={async () => {
@@ -455,23 +489,24 @@ export default function AdminDashboardPage() {
             ملفي كمسؤول تحصيل
           </button>
           {user?.role === "ONLINE_ADMIN" && (
-          <button
-            onClick={async () => {
-              setActiveTab("online");
-              if (!onlineLoadedOnce) {
-                await loadOnlinePayments();
-              }
-            }}
-            className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
-              activeTab === "online"
-                ? "bg-brand-cyan text-white"
-                : "bg-white text-slate-700 border border-slate-200"
-            }`}
-          >
-            مدفوعات إنستا باي
-          </button>
+            <button
+              onClick={async () => {
+                setActiveTab("online");
+                if (!onlineLoadedOnce) {
+                  await loadOnlinePayments();
+                }
+              }}
+              className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
+                activeTab === "online"
+                  ? "bg-brand-cyan text-white"
+                  : "bg-white text-slate-700 border border-slate-200"
+              }`}
+            >
+              مدفوعات إنستا باي
+            </button>
           )}
         </div>
+
         {/* Search */}
         <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
           <div className="flex-1">
@@ -481,7 +516,7 @@ export default function AdminDashboardPage() {
             <input
               type="text"
               className="w-full border rounded-lg px-3 py-2 text-sm text-right"
-              placeholder="الاسم، رقم المبنى، الدور، الشقة، أو اسم المستخدم"
+              placeholder="الاسم أو رقم المبنى / الدور / الشقة"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -500,346 +535,350 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* Layout: Residents list (cards) + Invoices panel */}
-        {activeTab === "collect"  && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">      
-          {/* Residents column */}
-          <div className="lg:col-span-1 bg-white rounded-xl shadow-sm p-3 space-y-3">
-            <h2 className="text-sm font-semibold text-slate-800 mb-1">
-              قائمة السكان
-            </h2>
-            {loading && residents.length === 0 ? (
-              <p className="text-sm text-slate-600">جارٍ تحميل السكان...</p>
-            ) : residents.length === 0 ? (
-              <p className="text-sm text-slate-600">
-                لا توجد نتائج. جرّب تعديل بيانات البحث.
-              </p>
-            ) : (
-              <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-                {residents.map((res) => (
-                  <button
-                    key={res.id}
-                    className={`w-full text-right border rounded-lg p-3 text-sm hover:bg-slate-50 transition ${
-                      selectedResident?.id === res.id
-                        ? "border-brand-cyan bg-slate-50"
-                        : "border-slate-200"
-                    }`}
-                    onClick={() => handleSelectResident(res)}
-                  >
-                    <div className="font-semibold text-slate-800">
-                      {res.person.full_name}
-                    </div>
-                    <div className="text-xs text-slate-600">
-                      مبنى {res.person.building} – دور {res.person.floor} – شقة{" "}
-                      {res.person.apartment}
-                    </div>
-                    <div className="text-xs mt-1">
-                      <span
-                        className={
-                          res.unpaid_invoices_count > 0
-                            ? "text-red-600 font-semibold"
-                            : "text-green-600"
-                        }
-                      >
-                        {res.unpaid_invoices_count > 0
-                          ? `${res.unpaid_invoices_count}  ايصالات غير مسدد`
-                          : "لا توجد  ايصالات مستحقة"}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          {/* Invoices + Collect form */}
-          <div className="lg:col-span-2 space-y-3">
-            {/* Invoices */}
-            <div className="bg-white rounded-xl shadow-sm p-3">
-              <h2 className="text-sm font-semibold text-slate-800 mb-2">
-                 ايصالات الساكن
+        {/* Layout: Residents list + Invoices panel */}
+        {activeTab === "collect" && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Residents column */}
+            <div className="lg:col-span-1 bg-white rounded-xl shadow-sm p-3 space-y-3">
+              <h2 className="text-sm font-semibold text-slate-800 mb-1">
+                قائمة السكان
               </h2>
-              {!selectedResident ? (
+              {loading && residents.length === 0 ? (
+                <p className="text-sm text-slate-600">جارٍ تحميل السكان...</p>
+              ) : residents.length === 0 ? (
                 <p className="text-sm text-slate-600">
-                  اختر ساكناً من القائمة على اليمين لعرض  ايصالاته.
-                </p>
-              ) : loading && invoices.length === 0 ? (
-                <p className="text-sm text-slate-600">
-                  جارٍ تحميل  ايصالات {selectedResident.person.full_name}...
-                </p>
-              ) : invoices.length === 0 ? (
-                <p className="text-sm text-slate-600">
-                  لا توجد  ايصالات مسجلة لهذا الساكن.
+                  لا توجد نتائج. جرّب تعديل بيانات البحث.
                 </p>
               ) : (
-                <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
-                  {invoices.map((inv) => {
-                    const isPaid = inv.status === "PAID";
-                    const isOverdue = inv.status === "OVERDUE";
-                    const isPendingConfirmation = inv.status === "PENDING_CONFIRMATION";
-
-                    return (
-                      <div
-                        key={inv.id}
-                        className="border rounded-lg p-3 text-sm bg-slate-50"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="font-semibold text-slate-800">
-                            شهر {inv.month}/{inv.year}
-                          </div>
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-xs ${
-                              isPaid
-                                ? "bg-green-100 text-green-700"
-                                : isPendingConfirmation
-                                ? "bg-blue-100 text-blue-700"
-                                : isOverdue
-                                ? "bg-red-100 text-red-700"
-                                : "bg-amber-100 text-amber-700"
-                            }`}
-                          >
-                            {isPaid
-                              ? "مسدد"
-                              : isPendingConfirmation
-                              ? "في انتظار تأكيد الدفع"
-                              : isOverdue
-                              ? "متأخرة"
-                              : "غير مسدد"}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center justify-between mt-1">
-                          <span>القيمة:</span>
-                          <span className="font-semibold">
-                            {inv.amount.toFixed(2)} جنيه
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-slate-600 mt-1">
-                          <span>الاستحقاق:</span>
-                          <span>{inv.due_date || "-"}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-slate-600">
-                          <span>السداد:</span>
-                          <span>{inv.paid_date || "-"}</span>
-                        </div>
-
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {/* ✅ Admin can only collect / delete if NOT PAID and NOT PENDING_CONFIRMATION */}
-                          {!isPaid && !isPendingConfirmation && (
-                            <button
-                              onClick={() => startCollect(inv)}
-                              className="text-xs px-3 py-1.5 rounded-lg bg-brand-cyan text-white hover:opacity-90"
-                            >
-                              تسجيل تحصيل هذا الايصال
-                            </button>
-                          )}
-                          {!isPaid && !isPendingConfirmation && (
-                            <button
-                              onClick={() => handleDeleteInvoice(inv)}
-                              className="text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 border border-red-200 hover:bg-red-50"
-                            >
-                              حذف الايصال
-                            </button>
-                          )}
-                          {isPendingConfirmation && (
-                            <p className="text-[11px] text-slate-600">
-                              يوجد طلب دفع إلكتروني قيد المراجعة لهذا الايصال، لا يمكن تعديله من هنا.
-                            </p>
-                          )}
-                        </div>
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                  {residents.map((res) => (
+                    <button
+                      key={res.id}
+                      className={`w-full text-right border rounded-lg p-3 text-sm hover:bg-slate-50 transition ${
+                        selectedResident?.id === res.id
+                          ? "border-brand-cyan bg-slate-50"
+                          : "border-slate-200"
+                      }`}
+                      onClick={() => handleSelectResident(res)}
+                    >
+                      <div className="font-semibold text-slate-800">
+                        {res.person.full_name}
                       </div>
-                    );
-                  })}
+                      <div className="text-xs text-slate-600">
+                        مبنى {res.person.building} – دور {res.person.floor} – شقة{" "}
+                        {res.person.apartment}
+                      </div>
+                      <div className="text-xs mt-1">
+                        <span
+                          className={
+                            res.unpaid_invoices_count > 0
+                              ? "text-red-600 font-semibold"
+                              : "text-green-600"
+                          }
+                        >
+                          {res.unpaid_invoices_count > 0
+                            ? `${res.unpaid_invoices_count}  ايصالات غير مسدد`
+                            : "لا توجد  ايصالات مستحقة"}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
 
-            {/* Collect form */}
-            <div className="bg-white rounded-xl shadow-sm p-3">
-              <h2 className="text-sm font-semibold text-slate-800 mb-2">
-                تسجيل تحصيل نقدي
-              </h2>
-              {!selectedResident || !collectingInvoice ? (
-                <p className="text-sm text-slate-600">
-                  اختر ساكناً، ثم اختر ايصال غير مسدد لتسجيل التحصيل.
-                </p>
-              ) : (
-                <form
-                  onSubmit={submitCollect}
-                  className="space-y-3 text-sm max-w-md"
-                >
-                  <div>
+            {/* Invoices + Collect form */}
+            <div className="lg:col-span-2 space-y-3">
+              {/* Invoices */}
+              <div className="bg-white rounded-xl shadow-sm p-3">
+                <h2 className="text-sm font-semibold text-slate-800 mb-2">
+                  ايصالات الساكن
+                </h2>
+                {!selectedResident ? (
+                  <p className="text-sm text-slate-600">
+                    اختر ساكناً من القائمة على اليمين لعرض  ايصالاته.
+                  </p>
+                ) : loading && invoices.length === 0 ? (
+                  <p className="text-sm text-slate-600">
+                    جارٍ تحميل  ايصالات {selectedResident.person.full_name}...
+                  </p>
+                ) : invoices.length === 0 ? (
+                  <p className="text-sm text-slate-600">
+                    لا توجد  ايصالات مسجلة لهذا الساكن.
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+                    {invoices.map((inv) => {
+                      const isPaid = inv.status === "PAID";
+                      const isOverdue = inv.status === "OVERDUE";
+                      const isPendingConfirmation =
+                        inv.status === "PENDING_CONFIRMATION";
+
+                      return (
+                        <div
+                          key={inv.id}
+                          className="border rounded-lg p-3 text-sm bg-slate-50"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="font-semibold text-slate-800">
+                              شهر {inv.month}/{inv.year}
+                            </div>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-xs ${
+                                isPaid
+                                  ? "bg-green-100 text-green-700"
+                                  : isPendingConfirmation
+                                  ? "bg-blue-100 text-blue-700"
+                                  : isOverdue
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-amber-100 text-amber-700"
+                              }`}
+                            >
+                              {isPaid
+                                ? "مسدد"
+                                : isPendingConfirmation
+                                ? "في انتظار تأكيد الدفع"
+                                : isOverdue
+                                ? "متأخرة"
+                                : "غير مسدد"}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between mt-1">
+                            <span>القيمة:</span>
+                            <span className="font-semibold">
+                              {inv.amount.toFixed(2)} جنيه
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-slate-600 mt-1">
+                            <span>الاستحقاق:</span>
+                            <span>{inv.due_date || "-"}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-slate-600">
+                            <span>السداد:</span>
+                            <span>{inv.paid_date || "-"}</span>
+                          </div>
+
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {!isPaid && !isPendingConfirmation && (
+                              <button
+                                onClick={() => startCollect(inv)}
+                                className="text-xs px-3 py-1.5 rounded-lg bg-brand-cyan text-white hover:opacity-90"
+                              >
+                                تسجيل تحصيل هذا الايصال
+                              </button>
+                            )}
+                            {!isPaid && !isPendingConfirmation && (
+                              <button
+                                onClick={() => handleDeleteInvoice(inv)}
+                                className="text-xs px-3 py-1.5 rounded-lg bg-red-100 text-red-700 border border-red-200 hover:bg-red-50"
+                              >
+                                حذف الايصال
+                              </button>
+                            )}
+                            {isPendingConfirmation && (
+                              <p className="text-[11px] text-slate-600">
+                                يوجد طلب دفع إلكتروني قيد المراجعة لهذا الايصال، لا
+                                يمكن تعديله من هنا.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Collect form */}
+              <div className="bg-white rounded-xl shadow-sm p-3">
+                <h2 className="text-sm font-semibold text-slate-800 mb-2">
+                  تسجيل تحصيل نقدي
+                </h2>
+                {!selectedResident || !collectingInvoice ? (
+                  <p className="text-sm text-slate-600">
+                    اختر ساكناً، ثم اختر ايصال غير مسدد لتسجيل التحصيل.
+                  </p>
+                ) : (
+                  <form
+                    onSubmit={submitCollect}
+                    className="space-y-3 text-sm max-w-md"
+                  >
+                    <div>
+                      <div className="text-slate-700">
+                        الساكن:{" "}
+                        <span className="font-semibold">
+                          {selectedResident.person.full_name}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-600">
+                        ايصال شهر {collectingInvoice.month}/
+                        {collectingInvoice.year}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block mb-1 text-slate-700">
+                        المبلغ المحصل (جنيه)
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-lg px-3 py-2 text-right bg-slate-100 cursor-not-allowed"
+                        value={
+                          collectingInvoice
+                            ? collectingInvoice.amount.toFixed(2)
+                            : ""
+                        }
+                        readOnly
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        قيمة الفاتورة ثابتة ولا يمكن تعديلها من شاشة التحصيل.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block mb-1 text-slate-700">
+                        ملاحظات (اختياري)
+                      </label>
+                      <textarea
+                        className="w-full border rounded-lg px-3 py-2 text-right text-sm"
+                        rows={2}
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="مثال: تم التحصيل نقداً بواسطة مسؤول البوابة."
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
+                    >
+                      {saving
+                        ? "جارٍ الحفظ..."
+                        : "تسجيل التحصيل واعتبار الايصال مسدد"}
+                    </button>
+                  </form>
+                )}
+              </div>
+
+              {/* New invoice form */}
+              <div className="bg-white rounded-xl shadow-sm p-3">
+                <h2 className="text-sm font-semibold text-slate-800 mb-2">
+                  إنشاء ايصال صيانة جديدة
+                </h2>
+                {!selectedResident ? (
+                  <p className="text-sm text-slate-600">
+                    اختر ساكناً من القائمة لإنشاء ايصال جديدة له.
+                  </p>
+                ) : (
+                  <form
+                    onSubmit={submitNewInvoice}
+                    className="space-y-3 text-sm max-w-md"
+                  >
                     <div className="text-slate-700">
                       الساكن:{" "}
                       <span className="font-semibold">
                         {selectedResident.person.full_name}
                       </span>
                     </div>
-                    <div className="text-xs text-slate-600">
-                      ايصال شهر {collectingInvoice.month}/
-                      {collectingInvoice.year}
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block mb-1 text-slate-700">
+                          شهر الايصال
+                        </label>
+                        <select
+                          className="w-full border rounded-lg px-3 py-2 text-right"
+                          value={newMonth}
+                          onChange={(e) => setNewMonth(e.target.value)}
+                          required
+                        >
+                          <option value="">اختر الشهر</option>
+                          <option value="1">يناير</option>
+                          <option value="2">فبراير</option>
+                          <option value="3">مارس</option>
+                          <option value="4">أبريل</option>
+                          <option value="5">مايو</option>
+                          <option value="6">يونيو</option>
+                          <option value="7">يوليو</option>
+                          <option value="8">أغسطس</option>
+                          <option value="9">سبتمبر</option>
+                          <option value="10">أكتوبر</option>
+                          <option value="11">نوفمبر</option>
+                          <option value="12">ديسمبر</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block mb-1 text-slate-700">
+                          سنة الايصال
+                        </label>
+                        <input
+                          type="number"
+                          className="w-full border rounded-lg px-3 py-2 text-right"
+                          value={newYear}
+                          onChange={(e) => setNewYear(e.target.value)}
+                          required
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="block mb-1 text-slate-700">
-                      المبلغ المحصل (جنيه)
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full border rounded-lg px-3 py-2 text-right bg-slate-100 cursor-not-allowed"
-                      value={
-                        collectingInvoice
-                          ? collectingInvoice.amount.toFixed(2)
-                          : ""
-                      }
-                      readOnly
-                    />
-                    <p className="text-xs text-slate-500 mt-1">
-                      قيمة الفاتورة ثابتة ولا يمكن تعديلها من شاشة التحصيل.
-                    </p>
-                  </div>
-
-
-                  <div>
-                    <label className="block mb-1 text-slate-700">
-                      ملاحظات (اختياري)
-                    </label>
-                    <textarea
-                      className="w-full border rounded-lg px-3 py-2 text-right text-sm"
-                      rows={2}
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="مثال: تم التحصيل نقداً بواسطة مسؤول البوابة."
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
-                  >
-                    {saving ? "جارٍ الحفظ..." : "تسجيل التحصيل واعتبار الايصال مسدد"}
-                  </button>
-                </form>
-              )}
-            </div>
-            {/* New invoice form */}
-            <div className="bg-white rounded-xl shadow-sm p-3">
-              <h2 className="text-sm font-semibold text-slate-800 mb-2">
-                إنشاء ايصال صيانة جديدة
-              </h2>
-              {!selectedResident ? (
-                <p className="text-sm text-slate-600">
-                  اختر ساكناً من القائمة لإنشاء ايصال جديدة له.
-                </p>
-              ) : (
-                <form
-                  onSubmit={submitNewInvoice}
-                  className="space-y-3 text-sm max-w-md"
-                >
-                  <div className="text-slate-700">
-                    الساكن:{" "}
-                    <span className="font-semibold">
-                      {selectedResident.person.full_name}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block mb-1 text-slate-700">
-                        شهر الايصال
-                      </label>
-                      <select
-                        className="w-full border rounded-lg px-3 py-2 text-right"
-                        value={newMonth}
-                        onChange={(e) => setNewMonth(e.target.value)}
-                        required
-                      >
-                        <option value="">اختر الشهر</option>
-                        <option value="1">يناير</option>
-                        <option value="2">فبراير</option>
-                        <option value="3">مارس</option>
-                        <option value="4">أبريل</option>
-                        <option value="5">مايو</option>
-                        <option value="6">يونيو</option>
-                        <option value="7">يوليو</option>
-                        <option value="8">أغسطس</option>
-                        <option value="9">سبتمبر</option>
-                        <option value="10">أكتوبر</option>
-                        <option value="11">نوفمبر</option>
-                        <option value="12">ديسمبر</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block mb-1 text-slate-700">
-                        سنة الايصال
+                        قيمة الايصال (جنيه)
                       </label>
                       <input
                         type="number"
+                        step="0.01"
                         className="w-full border rounded-lg px-3 py-2 text-right"
-                        value={newYear}
-                        onChange={(e) => setNewYear(e.target.value)}
+                        value={newAmount}
+                        onChange={(e) => setNewAmount(e.target.value)}
                         required
                       />
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="block mb-1 text-slate-700">
-                      قيمة الايصال (جنيه)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="w-full border rounded-lg px-3 py-2 text-right"
-                      value={newAmount}
-                      onChange={(e) => setNewAmount(e.target.value)}
-                      required
-                    />
-                  </div>
+                    <div>
+                      <label className="block mb-1 text-slate-700">
+                        تاريخ الاستحقاق
+                      </label>
+                      <input
+                        type="date"
+                        className="w-full border rounded-lg px-3 py-2 text-right"
+                        value={newDueDate}
+                        onChange={(e) => setNewDueDate(e.target.value)}
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block mb-1 text-slate-700">
-                      تاريخ الاستحقاق 
-                    </label>
-                    <input
-                      type="date"
-                      className="w-full border rounded-lg px-3 py-2 text-right"
-                      value={newDueDate}
-                      onChange={(e) => setNewDueDate(e.target.value)}
-                    />
-                  </div>
+                    <div>
+                      <label className="block mb-1 text-slate-700">
+                        ملاحظات (اختياري)
+                      </label>
+                      <textarea
+                        className="w-full border rounded-lg px-3 py-2 text-right text-sm"
+                        rows={2}
+                        value={newNotes}
+                        onChange={(e) => setNewNotes(e.target.value)}
+                        placeholder="مثال: قيمة الصيانة لهذا الشهر بعد زيادة الجمعية."
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block mb-1 text-slate-700">
-                      ملاحظات (اختياري)
-                    </label>
-                    <textarea
-                      className="w-full border rounded-lg px-3 py-2 text-right text-sm"
-                      rows={2}
-                      value={newNotes}
-                      onChange={(e) => setNewNotes(e.target.value)}
-                      placeholder="مثال: قيمة الصيانة لهذا الشهر بعد زيادة الجمعية."
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={newSaving}
-                    className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
-                  >
-                    {newSaving ? "جارٍ الحفظ..." : "إنشاء الايصال"}
-                  </button>
-                </form>
-              )}
+                    <button
+                      type="submit"
+                      disabled={newSaving}
+                      className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
+                    >
+                      {newSaving ? "جارٍ الحفظ..." : "إنشاء الايصال"}
+                    </button>
+                  </form>
+                )}
+              </div>
             </div>
           </div>
-        </div>
         )}
-        
+
         {activeTab === "view" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Residents column (same as before) */}
+            {/* Residents column */}
             <div className="lg:col-span-1 bg-white rounded-xl shadow-sm p-3 space-y-3">
               <h2 className="text-sm font-semibold text-slate-800 mb-1">
                 قائمة السكان
@@ -900,7 +939,8 @@ export default function AdminDashboardPage() {
                   {invoices.map((inv) => {
                     const isPaid = inv.status === "PAID";
                     const isOverdue = inv.status === "OVERDUE";
-                    const isPendingConfirmation = inv.status === "PENDING_CONFIRMATION";
+                    const isPendingConfirmation =
+                      inv.status === "PENDING_CONFIRMATION";
                     return (
                       <div
                         key={inv.id}
@@ -974,7 +1014,9 @@ export default function AdminDashboardPage() {
                 ملخص مسؤول التحصيل
               </h2>
 
-              {profileLoading && <p className="text-sm text-slate-600">جارٍ تحميل البيانات...</p>}
+              {profileLoading && (
+                <p className="text-sm text-slate-600">جارٍ تحميل البيانات...</p>
+              )}
               {profileError && (
                 <p className="text-sm text-red-600">{profileError}</p>
               )}
@@ -1020,7 +1062,6 @@ export default function AdminDashboardPage() {
                     </div>
                   </div>
 
-
                   {/* Recent payments */}
                   <div>
                     <h3 className="text-sm font-semibold text-slate-800 mb-2">
@@ -1046,8 +1087,7 @@ export default function AdminDashboardPage() {
                               </span>
                             </div>
                             <div className="text-xs text-slate-600 mt-1">
-                              مبنى {p.building} – دور {p.floor} – شقة{" "}
-                              {p.apartment}
+                              مبنى {p.building} – دور {p.floor} – شقة {p.apartment}
                             </div>
                             <div className="flex items-center justify-between mt-1">
                               <span>
@@ -1083,11 +1123,13 @@ export default function AdminDashboardPage() {
                 <p className="text-sm text-red-600 mb-2">{onlineError}</p>
               )}
 
-              {!onlineLoading && onlinePayments.length === 0 && !onlineError && (
-                <p className="text-sm text-slate-600">
-                  لا توجد مدفوعات إلكترونية معلقة حالياً.
-                </p>
-              )}
+              {!onlineLoading &&
+                onlinePayments.length === 0 &&
+                !onlineError && (
+                  <p className="text-sm text-slate-600">
+                    لا توجد مدفوعات إلكترونية معلقة حالياً.
+                  </p>
+                )}
 
               {!onlineLoading && onlinePayments.length > 0 && (
                 <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1 text-sm">
@@ -1132,7 +1174,9 @@ export default function AdminDashboardPage() {
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-700 mt-1">
                         <div>
-                          <div className="text-slate-600">حساب/موبايل المرسل:</div>
+                          <div className="text-slate-600">
+                            حساب/موبايل المرسل:
+                          </div>
                           <div>{op.instapay_sender_id}</div>
                         </div>
                         <div>
@@ -1160,7 +1204,8 @@ export default function AdminDashboardPage() {
                           className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs hover:opacity-90 disabled:opacity-60"
                         >
                           {onlineActionLoadingId === op.id && "جاري التنفيذ..."}
-                          {onlineActionLoadingId !== op.id && "اعتماد العملية واعتبار الفاتورة مسددة"}
+                          {onlineActionLoadingId !== op.id &&
+                            "اعتماد العملية واعتبار الفاتورة مسددة"}
                         </button>
                       </div>
                     </div>
