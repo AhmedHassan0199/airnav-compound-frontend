@@ -688,3 +688,119 @@ export async function adminActOnOnlinePayment(
   }
   return res.json();
 }
+
+export async function residentUpdateProfile(payload: {
+  full_name?: string;
+  password?: string;
+}) {
+  const accessToken = localStorage.getItem("access_token");
+  if (!accessToken) throw new Error("Not authenticated");
+
+  const res = await apiFetch(`${API_BASE}/resident/profile/update`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to update profile");
+  }
+
+  return data as {
+    message: string;
+    user: {
+      id: number;
+      username: string | null;
+      role: string;
+      can_edit_profile: boolean;
+    };
+    person: {
+      full_name: string;
+      building: string;
+      floor: string;
+      apartment: string;
+      phone: string | null;
+    };
+  };
+}
+
+export async function superadminGetResidentProfile(
+  token: string | null,
+  userId: number
+) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await apiFetch(`${API_BASE}/admin/residents/${userId}/profile`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to load resident profile");
+  }
+
+  return data;
+}
+
+export async function superadminUpdateResidentProfile(
+  token: string | null,
+  userId: number,
+  payload: {
+    full_name?: string;
+    phone?: string;
+    password?: string;
+    reset_can_edit_profile?: boolean;
+  }
+) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await apiFetch(`${API_BASE}/admin/residents/${userId}/profile`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to update resident profile");
+  }
+
+  return data;
+}
+
+export async function superadminUpdateInvoiceStatus(
+  token: string | null,
+  invoiceId: number,
+  status: "PAID" | "UNPAID"
+) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await apiFetch(`${API_BASE}/admin/invoices/${invoiceId}/status`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ status }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to update invoice status");
+  }
+
+  return data;
+}
