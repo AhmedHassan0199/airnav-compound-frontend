@@ -3,6 +3,7 @@
 import DashboardHeader from "@/components/DashboardHeader";
 import { useEffect, useState } from "react";
 import { useRequireAuth } from "@/lib/auth";
+import { useRouter } from "next/navigation";
 import {
   getResidentProfile,
   getResidentInvoices,
@@ -331,6 +332,8 @@ function InvoiceCard({
 }
 
 export default function ResidentPage() {
+  const router = useRouter();
+
   const { user, loading: authLoading } = useRequireAuth(["RESIDENT"]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -460,6 +463,16 @@ export default function ResidentPage() {
   return (
     <main className="min-h-screen p-4 bg-brand-beige" dir="rtl">
       <DashboardHeader title="حساب الساكن" />
+      {/* New edit button */}
+      <div className="max-w-4xl mx-auto flex justify-end mb-4">
+        <button
+          onClick={() => router.push("/resident/profile")}
+          className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold hover:bg-brand-cyan/90 transition"
+        >
+          تعديل بياناتي
+        </button>
+      </div>
+
       <div className="max-w-3xl mx-auto space-y-4">
         {/* Header / Profile card */}
         <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col sm:flex-row justify-between gap-3">
