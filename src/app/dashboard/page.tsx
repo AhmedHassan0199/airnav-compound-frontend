@@ -82,7 +82,9 @@ export default function AdminDashboardPage() {
     "ONLINE_ADMIN",
   ]);
 
-  const [query, setQuery] = useState("");
+  const [buildingFilter, setBuildingFilter] = useState("");
+  const [floorFilter, setFloorFilter] = useState("");
+  const [apartmentFilter, setApartmentFilter] = useState("");
   const [residents, setResidents] = useState<Resident[]>([]);
   const [selectedResident, setSelectedResident] = useState<Resident | null>(
     null
@@ -170,22 +172,21 @@ export default function AdminDashboardPage() {
       return;
     }
 
-    loadResidents("");
+    loadResidents();
   }, [authLoading]);
 
-  async function loadResidents(search: string) {
-    try {
-      setError(null);
-      setLoading(true);
-      const token = localStorage.getItem("access_token");
-      const data = await adminSearchResidents(token, search);
-      setResidents(data);
-    } catch (err: any) {
-      setError(err.message || "حدث خطأ أثناء تحميل السكان");
-    } finally {
-      setLoading(false);
-    }
+  type ResidentFilters = {
+    building?: string;
+    floor?: string;
+    apartment?: string;
+  };
+
+  async function loadResidents(filters?: ResidentFilters) {
+    const token = localStorage.getItem("access_token");
+    const data = await adminSearchResidents(token, filters || {});
+    setResidents(data);
   }
+
 
   async function loadOnlinePayments() {
     try {
@@ -204,10 +205,16 @@ export default function AdminDashboardPage() {
     }
   }
 
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    await loadResidents(query.trim());
+  async function handleSearch(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+
+    await loadResidents({
+      building: buildingFilter.trim(),
+      floor: floorFilter.trim(),
+      apartment: apartmentFilter.trim(),
+    });
   }
+
 
   async function handleOnlineAction(id: number, action: "approve" | "reject") {
     const confirmText =
@@ -508,22 +515,54 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Search */}
-        <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
-          <div className="flex-1">
+        <div className="bg-white rounded-xl shadow-sm p-4 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+          
+          {/* Building */}
+          <div>
             <label className="block mb-1 text-sm font-semibold text-slate-700">
-              بحث عن ساكن
+              المبنى
             </label>
             <input
               type="text"
               className="w-full border rounded-lg px-3 py-2 text-sm text-right"
-              placeholder="الاسم أو رقم المبنى / الدور / الشقة"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              placeholder="مثال: 10"
+              value={buildingFilter}
+              onChange={(e) => setBuildingFilter(e.target.value)}
             />
           </div>
+
+          {/* Floor */}
+          <div>
+            <label className="block mb-1 text-sm font-semibold text-slate-700">
+              الدور
+            </label>
+            <input
+              type="text"
+              className="w-full border rounded-lg px-3 py-2 text-sm text-right"
+              placeholder="مثال: 4"
+              value={floorFilter}
+              onChange={(e) => setFloorFilter(e.target.value)}
+            />
+          </div>
+
+          {/* Apartment */}
+          <div>
+            <label className="block mb-1 text-sm font-semibold text-slate-700">
+              الشقة
+            </label>
+            <input
+              type="text"
+              className="w-full border rounded-lg px-3 py-2 text-sm text-right"
+              placeholder="مثال: 12"
+              value={apartmentFilter}
+              onChange={(e) => setApartmentFilter(e.target.value)}
+            />
+          </div>
+
+          {/* Search button */}
           <button
             onClick={handleSearch}
-            className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold self-stretch sm:self-auto"
+            className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold"
           >
             بحث
           </button>

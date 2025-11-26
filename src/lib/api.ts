@@ -93,13 +93,27 @@ export async function getResidentInvoices(token: string | null) {
   return res.json();
 }
 
+type ResidentSearchFilters = {
+  building?: string;
+  floor?: string;
+  apartment?: string;
+};
+
 export async function adminSearchResidents(
   token: string | null,
-  query: string
+  filters: ResidentSearchFilters
 ) {
   if (!token) throw new Error("Missing token");
 
-  const url = `${API_BASE}/admin/residents?query=${encodeURIComponent(query)}`;
+  const params = new URLSearchParams();
+
+  if (filters.building) params.append("building", filters.building);
+  if (filters.floor) params.append("floor", filters.floor);
+  if (filters.apartment) params.append("apartment", filters.apartment);
+
+  const qs = params.toString();
+  const url = `${API_BASE}/admin/residents${qs ? `?${qs}` : ""}`;
+
   const res = await apiFetch(url, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -113,6 +127,7 @@ export async function adminSearchResidents(
 
   return res.json();
 }
+
 
 export async function adminGetResidentInvoices(
   token: string | null,
