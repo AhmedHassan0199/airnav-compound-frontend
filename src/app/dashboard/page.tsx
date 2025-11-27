@@ -187,6 +187,15 @@ export default function AdminDashboardPage() {
     setResidents(data);
   }
 
+  function handleSearchClick() {
+    const filters: ResidentFilters = {};
+    if (buildingFilter.trim()) filters.building = buildingFilter.trim();
+    if (floorFilter.trim()) filters.floor = floorFilter.trim();
+    if (apartmentFilter.trim()) filters.apartment = apartmentFilter.trim();
+    loadResidents(filters);
+  }
+
+
 
   async function loadOnlinePayments() {
     try {
@@ -561,11 +570,13 @@ export default function AdminDashboardPage() {
 
           {/* Search button */}
           <button
-            onClick={handleSearch}
-            className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold"
-          >
-            بحث
-          </button>
+              type="button"                   // ✅ important
+              onClick={handleSearchClick}     // ✅ uses filters
+              className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold hover:bg-brand-cyan/90"
+            >
+              بحث
+            </button>
+        
         </div>
 
         {error && (

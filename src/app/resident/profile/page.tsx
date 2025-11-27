@@ -1,16 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import DashboardHeader from "@/components/DashboardHeader";
 import { useRequireAuth } from "@/lib/auth";
 import { getResidentProfile, residentUpdateProfile } from "@/lib/api";
-import DashboardHeader from "@/components/DashboardHeader";
+
+const COUNTRY_CODES = [
+  { value: "+20", label: "🇪🇬 مصر (+20)" },
+  { value: "+971", label: "🇦🇪 الإمارات (+971)" },
+  { value: "+966", label: "🇸🇦 السعودية (+966)" },
+  { value: "+974", label: "🇶🇦 قطر (+974)" },
+  { value: "+965", label: "🇰🇼 الكويت (+965)" },
+];
 
 type ProfileResponse = {
   user: {
     id: number;
-    username: string | null;
+    username: string;
     role: string;
-    can_edit_profile: boolean;
+    can_edit_profile?: boolean;
   };
   person: {
     full_name: string | null;
@@ -22,136 +31,162 @@ type ProfileResponse = {
 };
 
 export default function ResidentEditProfilePage() {
-  const { user, loading: authLoading } = useRequireAuth(["RESIDENT"]);
+  useRequireAuth(["RESIDENT"]);
+  const router = useRouter();
 
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const [fullName, setFullName] = useState("");
-  const [password, setPassword] = useState("");
-  const [password2, setPassword2] = useState("");
-
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (authLoading) return;
-    if (typeof window === "undefined") return;
+  const [fullName, setFullName] = useState("");
+  const [password, setPassword] = useState("");
+  const [countryCode, setCountryCode] = useState("+20");
+  const [phoneLocal, setPhoneLocal] = useState("");
+  const [canEdit, setCanEdit] = useState(true);
 
+  useEffect(() => {
     async function load() {
       try {
-        setError(null);
         setLoading(true);
+        setError(null);
         const token = localStorage.getItem("access_token");
         if (!token) {
           setError("لم يتم العثور على جلسة تسجيل الدخول.");
           setLoading(false);
           return;
         }
-        const data = await getResidentProfile(token);
+
+        const data: ProfileResponse = await getResidentProfile(token);
         setProfile(data);
-        setFullName(data.person.full_name || "");
+
+        const p = data.person;
+        const user = data.user;
+
+        setFullName(p.full_name || "");
+
+        // Try to split existing phone into country code + local
+        if (p.phone) {
+          const found = COUNTRY_CODES.find((c) =>
+            p.phone!.startsWith(c.value)
+          );
+          if (found) {
+            setCountryCode(found.value);
+            const rest = p.phone.slice(found.value.length);
+            setPhoneLocal(rest);
+          } else {
+            // fallback: keep +20 and put whole phone in local
+            setCountryCode("+20");
+            setPhoneLocal(p.phone);
+          }
+        }
+
+        setCanEdit(user.can_edit_profile !== false);
       } catch (err: any) {
-        setError(err.message || "حدث خطأ أثناء تحميل البيانات.");
+        setError(err.message || "تعذر تحميل البيانات.");
       } finally {
         setLoading(false);
       }
     }
 
-    load();
-  }, [authLoading]);
-
-  const canEdit = profile?.user.can_edit_profile ?? false;
+    if (typeof window !== "undefined") {
+      load();
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canEdit) return;
-
     setError(null);
     setSuccess(null);
 
-    if (!fullName && !password) {
-      setError("برجاء إدخال اسم جديد و/أو كلمة مرور جديدة.");
+    if (!canEdit) {
+      setError("لا يمكنك تعديل بياناتك مرة أخرى.");
       return;
     }
 
-    if (password && password !== password2) {
-      setError("تأكيد كلمة المرور غير مطابق.");
+    if (!fullName.trim()) {
+      setError("الاسم الكامل مطلوب.");
       return;
     }
+
+    if (!phoneLocal.trim()) {
+      setError("رقم الموبايل مطلوب.");
+      return;
+    }
+
+    // Build full phone: +20 + 1001234567
+    const localClean = phoneLocal.trim().replace(/^0+/, "");
+    const fullPhone = `${countryCode}${localClean}`;
 
     try {
       setSaving(true);
-      const payload: { full_name?: string; password?: string } = {};
-      if (fullName) payload.full_name = fullName;
-      if (password) payload.password = password;
-
-      const result = await residentUpdateProfile(payload);
-
-      setProfile({
-        user: result.user,
-        person: result.person,
+      await residentUpdateProfile({
+        full_name: fullName.trim(),
+        phone: fullPhone,
+        password: password || undefined,
       });
-      setSuccess("تم تحديث البيانات بنجاح، ولن يمكنك التعديل مرة أخرى.");
+
+      setSuccess(
+        "تم حفظ بياناتك بنجاح. لا يمكن تعديل البيانات مرة أخرى بعد هذه العملية."
+      );
+      setCanEdit(false);
       setPassword("");
-      setPassword2("");
     } catch (err: any) {
-      setError(err.message || "تعذر تحديث البيانات.");
+      setError(err.message || "تعذر حفظ البيانات.");
     } finally {
       setSaving(false);
     }
   }
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <main className="min-h-screen bg-brand-beige flex items-center justify-center" dir="rtl">
-        <p className="text-sm text-slate-600">جارٍ تحميل صفحة تعديل البيانات...</p>
+      <main
+        className="min-h-screen flex items-center justify-center bg-brand-beige"
+        dir="rtl"
+      >
+        <p className="text-sm text-slate-600">جارٍ تحميل بيانات الحساب...</p>
       </main>
     );
   }
 
-  if (!profile) {
+  if (error && !profile) {
     return (
-      <main className="min-h-screen bg-brand-beige flex items-center justify-center" dir="rtl">
-        <p className="text-sm text-red-600">
-          تعذر تحميل بيانات الحساب. حاول تسجيل الدخول مرة أخرى.
-        </p>
+      <main
+        className="min-h-screen flex items-center justify-center bg-brand-beige"
+        dir="rtl"
+      >
+        <div className="bg-white rounded-xl shadow-sm p-4 max-w-md w-full text-center">
+          <p className="text-sm text-red-600 mb-2">{error}</p>
+          <p className="text-xs text-slate-500">
+            حاول الرجوع للصفحة الرئيسية ثم تسجيل الدخول مرة أخرى.
+          </p>
+        </div>
       </main>
     );
   }
 
   return (
     <main className="min-h-screen bg-brand-beige p-4" dir="rtl">
-      <DashboardHeader title="تعديل بياناتي" />
-      <div className="max-w-xl mx-auto bg-white rounded-xl shadow-sm p-4 space-y-4">
-        <div>
-          <h1 className="text-lg font-bold text-slate-800 mb-1">
-            تعديل بيانات المقيم
-          </h1>
-          <p className="text-xs text-slate-600">
-            يمكنك تعديل الاسم وكلمة المرور مرة واحدة فقط. بعد الحفظ لن يمكنك التعديل مرة أخرى
-            إلا من خلال المشرف العام.
-          </p>
-        </div>
+      <DashboardHeader title="تعديل بيانات المقيم" />
+
+      <div className="max-w-lg mx-auto bg-white rounded-xl shadow-sm p-4 space-y-4">
+        <p className="text-xs text-slate-600">
+          يمكنك تعديل الاسم الكامل ورقم الموبايل، بالإضافة إلى كلمة المرور (اختياري)،
+          مرة واحدة فقط. بعد الحفظ لن تتمكن من تعديل هذه البيانات مرة أخرى من حساب
+          المقيم.
+        </p>
 
         {error && (
-          <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg p-2">
+          <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-2">
             {error}
           </div>
         )}
         {success && (
-          <div className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg p-2">
+          <div className="bg-green-50 border border-green-200 text-green-800 text-xs rounded-lg p-2">
             {success}
           </div>
         )}
-
-        <div className="text-xs text-slate-500 bg-slate-50 rounded-lg p-3">
-          <div>
-            الوحدة: عمارة {profile.person.building ?? "-"} – دور{" "}
-            {profile.person.floor ?? "-"} – شقة {profile.person.apartment ?? "-"}
-          </div>
-        </div>
 
         <form onSubmit={handleSubmit} className="space-y-3 text-sm">
           <div>
@@ -161,9 +196,39 @@ export default function ResidentEditProfilePage() {
               className="w-full border rounded-lg px-3 py-2 text-right"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
+              required
               disabled={!canEdit}
-              placeholder="مثال: أحمد حسن عز الدين"
             />
+          </div>
+
+          <div>
+            <label className="block mb-1 text-slate-700">رقم الموبايل</label>
+            <div className="flex gap-2">
+              <select
+                className="border rounded-lg px-3 py-2 text-right bg-white min-w-[130px]"
+                value={countryCode}
+                onChange={(e) => setCountryCode(e.target.value)}
+                disabled={!canEdit}
+              >
+                {COUNTRY_CODES.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="tel"
+                className="flex-1 border rounded-lg px-3 py-2 text-right"
+                value={phoneLocal}
+                onChange={(e) => setPhoneLocal(e.target.value)}
+                placeholder="مثال: 01090707277"
+                required
+                disabled={!canEdit}
+              />
+            </div>
+            <p className="mt-1 text-[11px] text-slate-500">
+              سيتم حفظ رقم الموبايل بصيغة دولية، مثل: +201090707277
+            </p>
           </div>
 
           <div>
@@ -175,38 +240,27 @@ export default function ResidentEditProfilePage() {
               className="w-full border rounded-lg px-3 py-2 text-right"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              disabled={!canEdit}
-              placeholder="اتركها فارغة إذا كنت لا تريد تغييرها"
-            />
-          </div>
-
-          <div>
-            <label className="block mb-1 text-slate-700">
-              تأكيد كلمة المرور
-            </label>
-            <input
-              type="password"
-              className="w-full border rounded-lg px-3 py-2 text-right"
-              value={password2}
-              onChange={(e) => setPassword2(e.target.value)}
+              placeholder="اتركه فارغاً إذا لا تريد تغييره"
               disabled={!canEdit}
             />
           </div>
 
-          {canEdit ? (
+          <div className="flex items-center justify-between mt-3">
+            <button
+              type="button"
+              onClick={() => router.push("/resident")}
+              className="px-3 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs"
+            >
+              رجوع لصفحة المقيم
+            </button>
             <button
               type="submit"
-              disabled={saving}
-              className="mt-2 px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
+              disabled={saving || !canEdit}
+              className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
             >
-              {saving ? "جارٍ الحفظ..." : "حفظ التعديلات"}
+              {saving ? "جارٍ الحفظ..." : "حفظ البيانات"}
             </button>
-          ) : (
-            <p className="text-xs text-slate-500 mt-2">
-              لقد قمت بتعديل بياناتك من قبل، ولا يمكنك التعديل مرة أخرى. إذا كانت هناك مشكلة،
-              برجاء التواصل مع المشرف العام.
-            </p>
-          )}
+          </div>
         </form>
       </div>
     </main>

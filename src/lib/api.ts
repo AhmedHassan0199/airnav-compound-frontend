@@ -690,43 +690,28 @@ export async function adminActOnOnlinePayment(
 }
 
 export async function residentUpdateProfile(payload: {
-  full_name?: string;
+  full_name: string;
+  phone: string;
   password?: string;
 }) {
-  const accessToken = localStorage.getItem("access_token");
-  if (!accessToken) throw new Error("Not authenticated");
+  const token = localStorage.getItem("access_token");
+  if (!token) throw new Error("Not authenticated");
 
   const res = await apiFetch(`${API_BASE}/resident/profile/update`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(payload),
   });
 
   const data = await res.json().catch(() => ({}));
-
   if (!res.ok) {
-    throw new Error(data.message || "Failed to update profile");
+    throw new Error(data.message || "فشل تحديث البيانات");
   }
 
-  return data as {
-    message: string;
-    user: {
-      id: number;
-      username: string | null;
-      role: string;
-      can_edit_profile: boolean;
-    };
-    person: {
-      full_name: string;
-      building: string;
-      floor: string;
-      apartment: string;
-      phone: string | null;
-    };
-  };
+  return data;
 }
 
 export async function superadminGetResidentProfile(
