@@ -248,7 +248,11 @@ export default function ResidentEditProfilePage() {
           <div className="flex items-center justify-between mt-3">
             <button
               type="button"
-              onClick={() => router.push("/resident")}
+              onClick={() => {
+            if (typeof window !== "undefined") {
+              window.location.href = "/resident";
+            }
+          }}
               className="px-3 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs"
             >
               رجوع لصفحة المقيم
