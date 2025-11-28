@@ -4,6 +4,7 @@ import DashboardHeader from "@/components/DashboardHeader";
 import { useEffect, useState } from "react";
 import { useRequireAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   getResidentProfile,
   getResidentInvoices,
@@ -465,18 +466,14 @@ export default function ResidentPage() {
       <DashboardHeader title="حساب الساكن" />
       {/* New edit button */}
       <div className="max-w-4xl mx-auto flex justify-end mb-4">
-        <button
-          type="button"
-          onClick={() => {
-            console.log("EDIT BUTTON CLICKED");
-            alert("clicked");
-            router.push("/resident/profile");
-          }}
-          className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold hover:bg-brand-cyan/90 transition"
+        <Link
+          href="/resident/profile"
+          className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold hover:bg-brand-cyan/90 transition inline-flex items-center justify-center"
         >
           تعديل بياناتي
-        </button>
+        </Link>
       </div>
+
 
       <div className="max-w-3xl mx-auto space-y-4">
         {/* Header / Profile card */}
