@@ -1,6 +1,7 @@
 "use client";
 
 import DashboardHeader from "@/components/DashboardHeader";
+import { formatDateTime } from "@/lib/dateFormat";
 import { useEffect, useState } from "react";
 import { useRequireAuth } from "@/lib/auth";
 import {
@@ -702,11 +703,11 @@ export default function AdminDashboardPage() {
                           </div>
                           <div className="flex items-center justify-between text-xs text-slate-600 mt-1">
                             <span>الاستحقاق:</span>
-                            <span>{inv.due_date || "-"}</span>
+                            <span>{formatDateTime(inv.due_date) || "-"}</span>
                           </div>
                           <div className="flex items-center justify-between text-xs text-slate-600">
                             <span>السداد:</span>
-                            <span>{inv.paid_date || "-"}</span>
+                            <span>{formatDateTime(inv.paid_date) || "-"}</span>
                           </div>
 
                           <div className="mt-2 flex flex-wrap gap-2">
@@ -1028,11 +1029,11 @@ export default function AdminDashboardPage() {
                         </div>
                         <div className="flex items-center justify-between text-xs text-slate-600 mt-1">
                           <span>الاستحقاق:</span>
-                          <span>{inv.due_date || "-"}</span>
+                          <span>{formatDateTime(inv.due_date) || "-"}</span>
                         </div>
                         <div className="flex items-center justify-between text-xs text-slate-600">
                           <span>السداد:</span>
-                          <span>{inv.paid_date || "-"}</span>
+                          <span>{formatDateTime(inv.paid_date) || "-"}</span>
                         </div>
 
                         {isPaid && selectedResident && (
@@ -1133,7 +1134,7 @@ export default function AdminDashboardPage() {
                                 {p.resident_name}
                               </span>
                               <span className="text-xs text-slate-600">
-                                {p.created_at}
+                                {formatDateTime(p.created_at)}
                               </span>
                             </div>
                             <div className="text-xs text-slate-600 mt-1">
@@ -1199,7 +1200,7 @@ export default function AdminDashboardPage() {
                         </div>
                         <div className="text-xs text-slate-600 text-left">
                           <div>تاريخ الطلب:</div>
-                          <div>{op.created_at}</div>
+                          <div>{formatDateTime(op.created_at)}</div>
                         </div>
                       </div>
 

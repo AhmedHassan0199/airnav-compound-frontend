@@ -1,6 +1,7 @@
 "use client";
 
 import DashboardHeader from "@/components/DashboardHeader";
+import { formatDateTime } from "@/lib/dateFormat";
 import { useEffect, useState } from "react";
 import { useRequireAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
@@ -213,11 +214,11 @@ function InvoiceCard({
 
       <div className="flex items-center justify-between text-xs text-slate-600">
         <span>تاريخ الاستحقاق:</span>
-        <span>{invoice.due_date || "-"}</span>
+        <span>{formatDateTime(invoice.due_date) || "-"}</span>
       </div>
       <div className="flex items-center justify-between text-xs text-slate-600">
         <span>تاريخ السداد:</span>
-        <span>{invoice.paid_date || "-"}</span>
+        <span>{formatDateTime(invoice.paid_date) || "-"}</span>
       </div>
 
       {isPaid ? (

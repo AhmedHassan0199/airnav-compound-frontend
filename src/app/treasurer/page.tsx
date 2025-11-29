@@ -1,6 +1,7 @@
 "use client";
 
 import DashboardHeader from "@/components/DashboardHeader";
+import { formatDateTime } from "@/lib/dateFormat";
 import { useEffect, useMemo, useState } from "react";
 import { useRequireAuth } from "@/lib/auth";
 import {
@@ -993,7 +994,7 @@ export default function TreasurerPage() {
                     <tbody>
                       {expenses.map((exp) => (
                         <tr key={exp.id} className="border-b last:border-0">
-                          <td className="py-1 align-top">{exp.date}</td>
+                          <td className="py-1 align-top">{formatDateTime(exp.date)}</td>
                           <td className="py-1 align-top">{exp.description}</td>
                           <td className="py-1 align-top">
                             {exp.category || "-"}
@@ -1072,7 +1073,7 @@ export default function TreasurerPage() {
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-slate-600">
-                            {entry.date}
+                            {formatDateTime(entry.date)}
                           </span>
                           <span
                             className={`text-xs font-semibold px-2 py-1 rounded-full ${
