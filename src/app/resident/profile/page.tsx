@@ -170,6 +170,36 @@ export default function ResidentEditProfilePage() {
     <main className="min-h-screen bg-brand-beige p-4" dir="rtl">
       <DashboardHeader title="تعديل بيانات المقيم" />
 
+      <div className="max-w-lg mx-auto bg-white rounded-xl shadow-sm p-4 space-y-4">
+        <p className="text-xs text-slate-600">
+          يمكنك تعديل الاسم الكامل ورقم الموبايل، بالإضافة إلى كلمة المرور (اختياري)،
+          مرة واحدة فقط. بعد الحفظ لن تتمكن من تعديل هذه البيانات مرة أخرى من حساب
+          المقيم.
+        </p>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-2">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="bg-green-50 border border-green-200 text-green-800 text-xs rounded-lg p-2">
+            {success}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-3 text-sm">
+          <div>
+            <label className="block mb-1 text-slate-700">الاسم الكامل</label>
+            <input
+              type="text"
+              className="w-full border rounded-lg px-3 py-2 text-right"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+              disabled={!canEdit}
+            />
+          </div>
         <div>
         <label className="block mb-1 text-slate-700">رقم الموبايل</label>
         <div className="flex gap-2 w-full">
@@ -199,6 +229,43 @@ export default function ResidentEditProfilePage() {
             سيتم حفظ رقم الموبايل بصيغة دولية، مثل: +201234567890
         </p>
         </div>
+
+          <div>
+            <label className="block mb-1 text-slate-700">
+              كلمة المرور الجديدة (اختياري)
+            </label>
+            <input
+              type="password"
+              className="w-full border rounded-lg px-3 py-2 text-right"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="اتركه فارغاً إذا لا تريد تغييره"
+              disabled={!canEdit}
+            />
+          </div>
+
+          <div className="flex items-center justify-between mt-3">
+            <button
+              type="button"
+              onClick={() => {
+            if (typeof window !== "undefined") {
+              window.location.href = "/resident";
+            }
+          }}
+              className="px-3 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs"
+            >
+              رجوع لصفحة المقيم
+            </button>
+            <button
+              type="submit"
+              disabled={saving || !canEdit}
+              className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
+            >
+              {saving ? "جارٍ الحفظ..." : "حفظ البيانات"}
+            </button>
+          </div>
+        </form>
+      </div>
     </main>
   );
 }
