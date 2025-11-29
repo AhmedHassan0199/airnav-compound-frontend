@@ -199,11 +199,11 @@ export default function SuperadminResidentUsersPage() {
                   className="flex-1 border rounded-lg px-3 py-2 text-right"
                   value={phoneLocal}
                   onChange={(e) => setPhoneLocal(e.target.value)}
-                  placeholder="مثال: 01090707277"
+                  placeholder="مثال: 01234567890"
                 />
               </div>
               <p className="mt-1 text-[11px] text-slate-500">
-                سيتم حفظ رقم الموبايل بصيغة دولية، مثل: +201090707277
+                سيتم حفظ رقم الموبايل بصيغة دولية، مثل: +201234567890
               </p>
             </div>
 

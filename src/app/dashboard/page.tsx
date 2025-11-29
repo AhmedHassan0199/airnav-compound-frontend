@@ -570,8 +570,8 @@ export default function AdminDashboardPage() {
 
           {/* Search button */}
           <button
-              type="button"                   // ✅ important
-              onClick={handleSearchClick}     // ✅ uses filters
+              type="button"                   
+              onClick={handleSearchClick}     
               className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold hover:bg-brand-cyan/90"
             >
               بحث
