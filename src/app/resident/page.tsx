@@ -110,6 +110,18 @@ function InvoiceCard({
   onRefresh?: () => Promise<void> | void;
   profile: Profile | null;
 }) {
+  const [showInstapayForm, setShowInstapayForm] = useState(false);
+  const [instaAmount, setInstaAmount] = useState("");
+  const [instaSenderId, setInstaSenderId] = useState("");
+  const [instaLoading, setInstaLoading] = useState(false);
+  const [instaMessage, setInstaMessage] = useState<string | null>(null);
+  const [instaError, setInstaError] = useState<string | null>(null);
+
+  // Hidden transaction ref (not shown to user, but sent to backend)
+  const [instaTransactionRef] = useState(() => {
+    return `WHATSAPP_${invoice.id}_${Date.now()}`;
+  });
+
   const isPaid = invoice.status === "PAID";
   const isPendingConfirmation = invoice.status === "PENDING_CONFIRMATION";
   const canPayOnline =
@@ -138,6 +150,13 @@ function InvoiceCard({
       return;
     }
     window.open(INSTAPAY_LINK, "_blank");
+
+    if (!instaAmount) {
+      setInstaAmount(invoice.amount.toFixed(2));
+    }
+    setShowInstapayForm(true);
+    setInstaMessage(null);
+    setInstaError(null);
   }
 
   function openWhatsappChat() {
@@ -156,6 +175,56 @@ function InvoiceCard({
 
     const url = `${base}?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank");
+  }
+
+  async function handleSubmitInstapay() {
+    try {
+      if (!instaAmount || !instaSenderId) {
+        setInstaError("برجاء إدخال المبلغ ورقم الموبايل / حساب إنستا باي.");
+        return;
+      }
+
+      const amountNum = parseFloat(instaAmount);
+      if (isNaN(amountNum) || amountNum <= 0) {
+        setInstaError("المبلغ غير صالح.");
+        return;
+      }
+
+      setInstaLoading(true);
+      setInstaError(null);
+      setInstaMessage(null);
+
+      await submitInstapayPayment(invoice.id, {
+        amount: amountNum,
+        instapay_sender_id: instaSenderId,
+        transaction_ref: instaTransactionRef, // hidden, auto-generated
+      });
+
+      setInstaMessage(
+        "تم تسجيل طلب الدفع الإلكتروني، برجاء التأكد من إرسال صورة التحويل على الواتساب. جاري مراجعة الطلب من قِبل الإدارة."
+      );
+      setShowInstapayForm(false);
+      setInstaSenderId("");
+      setInstaAmount("");
+
+      if (onRefresh) {
+        await onRefresh();
+      }
+    } catch (err: any) {
+      setInstaError(
+        err?.message || "تعذر تسجيل عملية إنستا باي، برجاء المحاولة مرة أخرى."
+      );
+    } finally {
+      setInstaLoading(false);
+    }
+  }
+
+  function resetInstapayForm() {
+    setShowInstapayForm(false);
+    setInstaSenderId("");
+    setInstaAmount("");
+    setInstaMessage(null);
+    setInstaError(null);
   }
 
   return (
@@ -195,19 +264,18 @@ function InvoiceCard({
       ) : (
         <>
           <p className="mt-1 text-[11px] text-slate-500">
-            بعد التحويل عن طريق إنستا باي، برجاء إرسال صورة من العملية على الواتساب
-            لتأكيد الدفع.
+            بعد التحويل عن طريق إنستا باي، لو سمحت ابعت صورة من عملية التحويل على
+            الواتساب لتأكيد الدفع، ثم اضغط على زر تسجيل العملية هنا.
           </p>
 
           {isPendingConfirmation ? (
             <p className="text-[11px] text-slate-600">
-              تم تسجيل عملية دفع إلكترونية لهذه الفاتورة، وجاري مراجعتها من قِبل
-              الإدارة.
+              تم تسجيل طلب دفع إلكتروني لهذه الفاتورة، وجاري مراجعته من قِبل الإدارة.
             </p>
           ) : (
             canPayOnline && (
               <div className="mt-2 space-y-2">
-                {/* Instapay button with "logo" */}
+                {/* Instapay button with small "logo" */}
                 <button
                   type="button"
                   onClick={handleOpenInstapay}
@@ -219,15 +287,84 @@ function InvoiceCard({
                   <span>الدفع عن طريق إنستا باي</span>
                 </button>
 
-                {/* WhatsApp button with logo */}
-                <button
-                  type="button"
-                  onClick={openWhatsappChat}
-                  className="w-full px-3 py-2 rounded-lg bg-[#25D366] text-white text-xs sm:text-sm font-semibold hover:opacity-90 inline-flex items-center justify-center gap-2"
-                >
-                  <span className="text-lg leading-none">🟢</span>
-                  <span>إرسال صورة التحويل على واتساب</span>
-                </button>
+                {/* Instapay details form */}
+                {showInstapayForm && (
+                  <div className="mt-2 border-t pt-2 space-y-2 text-right">
+                    <p className="text-[11px] text-slate-600">
+                      بعد إتمام التحويل من خلال تطبيق إنستا باي إلى حساب الاتحاد،
+                      برجاء إدخال البيانات التالية، ثم إرسال صورة من التحويل على
+                      الواتساب.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] text-slate-700 mb-1">
+                          المبلغ المحوَّل (جنيه)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="w-full border rounded-lg px-2 py-1 text-right text-[11px]"
+                          value={instaAmount}
+                          onChange={(e) => setInstaAmount(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-slate-700 mb-1">
+                          رقم الموبايل / حساب إنستا باي المرسِل
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full border rounded-lg px-2 py-1 text-right text-[11px]"
+                          value={instaSenderId}
+                          onChange={(e) => setInstaSenderId(e.target.value)}
+                          placeholder="مثال: 0100XXXXXXX أو user@instapay"
+                        />
+                      </div>
+                    </div>
+
+                    {/* WhatsApp button */}
+                    <button
+                      type="button"
+                      onClick={openWhatsappChat}
+                      className="w-full px-3 py-2 rounded-lg bg-[#25D366] text-white text-xs sm:text-sm font-semibold hover:opacity-90 inline-flex items-center justify-center gap-2"
+                    >
+                      <span className="text-lg leading-none">🟢</span>
+                      <span>إرسال صورة التحويل على واتساب</span>
+                    </button>
+
+                    <div className="flex items-center justify-end gap-2 mt-1">
+                      <button
+                        type="button"
+                        onClick={resetInstapayForm}
+                        className="px-3 py-1 rounded-lg bg-slate-100 text-slate-700 text-[11px]"
+                      >
+                        إلغاء
+                      </button>
+                      <button
+                        type="button"
+                        disabled={instaLoading}
+                        onClick={handleSubmitInstapay}
+                        className="px-3 py-1.5 rounded-lg bg-brand-cyan text-white text-[11px] sm:text-xs font-semibold disabled:opacity-60"
+                      >
+                        {instaLoading
+                          ? "جارٍ التسجيل..."
+                          : "تسجيل عملية إنستا باي"}
+                      </button>
+                    </div>
+
+                    {instaMessage && (
+                      <p className="text-[11px] text-green-700 mt-1">
+                        {instaMessage}
+                      </p>
+                    )}
+                    {instaError && (
+                      <p className="text-[11px] text-red-700 mt-1">
+                        {instaError}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             )
           )}
