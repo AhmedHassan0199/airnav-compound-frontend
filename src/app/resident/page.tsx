@@ -104,17 +104,12 @@ async function downloadInvoicePdf(invoiceId: number, year: number, month: number
 function InvoiceCard({
   invoice,
   onRefresh,
+  profile,
 }: {
   invoice: Invoice;
   onRefresh?: () => Promise<void> | void;
+  profile: Profile | null;
 }) {
-  const [showInstapayForm, setShowInstapayForm] = useState(false);
-  const [instaAmount, setInstaAmount] = useState("");
-  const [instaSenderId, setInstaSenderId] = useState("");
-  const [instaLoading, setInstaLoading] = useState(false);
-  const [instaMessage, setInstaMessage] = useState<string | null>(null);
-  const [instaError, setInstaError] = useState<string | null>(null);
-
   const isPaid = invoice.status === "PAID";
   const isPendingConfirmation = invoice.status === "PENDING_CONFIRMATION";
   const canPayOnline =
@@ -131,78 +126,36 @@ function InvoiceCard({
       ? "bg-blue-100 text-blue-700"
       : "bg-amber-100 text-amber-700";
 
+  const residentName =
+    profile?.person.full_name || profile?.user.username || "مقيم";
+  const building = profile?.person.building || "-";
+  const floor = profile?.person.floor || "-";
+  const apartment = profile?.person.apartment || "-";
+
   function handleOpenInstapay() {
     if (!INSTAPAY_LINK) {
       alert("لم يتم ضبط رابط إنستا باي في إعدادات النظام.");
       return;
     }
     window.open(INSTAPAY_LINK, "_blank");
-    if (!instaAmount) {
-      setInstaAmount(invoice.amount.toFixed(2));
-    }
-    setShowInstapayForm(true);
-    setInstaMessage(null);
-    setInstaError(null);
   }
 
   function openWhatsappChat() {
     const base = "https://wa.me/201090707277";
-    const text = `السلام عليكم، أنا من سكان مدينة الملاحة الجوية.\nقمت بتحويل مبلغ صيانة عن طريق إنستا باي.\n\nتفاصيل الفاتورة:\n- شهر: ${invoice.month}/${invoice.year}\n- المبلغ: ${invoice.amount.toFixed(
-      2
-    )} جنيه\n\nأرسل الآن صورة من عملية التحويل.`;
+
+    const text =
+      `السلام عليكم,\n` +
+      `أنا: ${residentName}\n` +
+      `الوحدة: مبنى ${building} – دور ${floor} – شقة ${apartment}\n\n` +
+      `قمت بتحويل مبلغ صيانة عن طريق إنستا باي.\n` +
+      `تفاصيل الفاتورة:\n` +
+      `- الشهر: ${invoice.month}/${invoice.year}\n` +
+      `- المبلغ: ${invoice.amount.toFixed(2)} جنيه\n\n` +
+      `سأرسل الآن صورة من التحويل هنا على الواتساب.\n` +
+      `شكراً لكم.`;
+
     const url = `${base}?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank");
-  }
-
-  async function handleSubmitInstapay() {
-    try {
-      if (!instaAmount || !instaSenderId) {
-        setInstaError("برجاء إدخال المبلغ ورقم الموبايل / حساب إنستا باي.");
-        return;
-      }
-
-      const amountNum = parseFloat(instaAmount);
-      if (isNaN(amountNum) || amountNum <= 0) {
-        setInstaError("المبلغ غير صالح.");
-        return;
-      }
-
-      setInstaLoading(true);
-      setInstaError(null);
-      setInstaMessage(null);
-
-      // نرسل Transaction Ref شكلي حتى لا يتكسر الـ Backend
-      await submitInstapayPayment(invoice.id, {
-        amount: amountNum,
-        instapay_sender_id: instaSenderId,
-        transaction_ref: `WHATSAPP_SCREENSHOT_${invoice.year}_${invoice.month}`,
-      });
-
-      setInstaMessage(
-        "تم تسجيل طلب الدفع الإلكتروني. برجاء إرسال صورة من عملية إنستا باي على واتساب ليتم اعتمادها."
-      );
-      setShowInstapayForm(false);
-      setInstaSenderId("");
-      setInstaAmount("");
-
-      if (onRefresh) {
-        await onRefresh();
-      }
-    } catch (err: any) {
-      setInstaError(
-        err?.message || "تعذر تسجيل عملية إنستا باي، برجاء المحاولة مرة أخرى."
-      );
-    } finally {
-      setInstaLoading(false);
-    }
-  }
-
-  function resetInstapayForm() {
-    setShowInstapayForm(false);
-    setInstaSenderId("");
-    setInstaAmount("");
-    setInstaMessage(null);
-    setInstaError(null);
   }
 
   return (
@@ -223,11 +176,11 @@ function InvoiceCard({
 
       <div className="flex items-center justify-between text-xs text-slate-600">
         <span>تاريخ الاستحقاق:</span>
-        <span>{formatDateTime(invoice.due_date) || "-"}</span>
+        <span>{invoice.due_date ? formatDateTime(invoice.due_date) : "-"}</span>
       </div>
       <div className="flex items-center justify-between text-xs text-slate-600">
         <span>تاريخ السداد:</span>
-        <span>{formatDateTime(invoice.paid_date) || "-"}</span>
+        <span>{invoice.paid_date ? formatDateTime(invoice.paid_date) : "-"}</span>
       </div>
 
       {isPaid ? (
@@ -242,99 +195,39 @@ function InvoiceCard({
       ) : (
         <>
           <p className="mt-1 text-[11px] text-slate-500">
-            لا يمكن تحميل الايصال قبل سدادها.
+            بعد التحويل عن طريق إنستا باي، برجاء إرسال صورة من العملية على الواتساب
+            لتأكيد الدفع.
           </p>
 
           {isPendingConfirmation ? (
             <p className="text-[11px] text-slate-600">
-              تم تسجيل طلب دفع إلكتروني لهذه الفاتورة، وجاري مراجعته من قِبل الإدارة.
+              تم تسجيل عملية دفع إلكترونية لهذه الفاتورة، وجاري مراجعتها من قِبل
+              الإدارة.
             </p>
           ) : (
             canPayOnline && (
               <div className="mt-2 space-y-2">
+                {/* Instapay button with "logo" */}
                 <button
                   type="button"
                   onClick={handleOpenInstapay}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs sm:text-sm font-semibold hover:opacity-90"
+                  className="w-full px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs sm:text-sm font-semibold hover:opacity-90 inline-flex items-center justify-center gap-2"
                 >
-                  الدفع عن طريق إنستا باي
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-white/15 border border-white/40 text-[11px] font-bold">
+                    i
+                  </span>
+                  <span>الدفع عن طريق إنستا باي</span>
                 </button>
 
-                {showInstapayForm && (
-                  <div className="mt-2 border-t pt-2 space-y-2 text-right">
-                    <p className="text-[11px] text-slate-600">
-                      بعد إتمام التحويل من خلال تطبيق إنستا باي إلى حساب الاتحاد،
-                      برجاء إدخال البيانات التالية، ثم إرسال{" "}
-                      <span className="font-semibold">صورة من عملية التحويل</span>{" "}
-                      على واتساب لتأكيد الدفع.
-                    </p>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[11px] text-slate-700 mb-1">
-                          المبلغ المحوَّل (جنيه)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="w-full border rounded-lg px-2 py-1 text-right text-[11px]"
-                          value={instaAmount}
-                          onChange={(e) => setInstaAmount(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] text-slate-700 mb-1">
-                          رقم الموبايل / حساب إنستا باي المرسِل
-                        </label>
-                        <input
-                          type="text"
-                          className="w-full border rounded-lg px-2 py-1 text-right text-[11px]"
-                          value={instaSenderId}
-                          onChange={(e) => setInstaSenderId(e.target.value)}
-                          placeholder="مثال: 0100XXXXXXX أو user@instapay"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 mt-2">
-                      <button
-                        type="button"
-                        onClick={openWhatsappChat}
-                        className="px-3 py-1.5 rounded-lg bg-green-500 text-white text-[11px] sm:text-xs font-semibold hover:opacity-90"
-                      >
-                        مراسلتنا على واتساب وإرسال صورة التحويل
-                      </button>
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={resetInstapayForm}
-                          className="px-3 py-1 rounded-lg bg-slate-100 text-slate-700 text-[11px]"
-                        >
-                          إلغاء
-                        </button>
-                        <button
-                          type="button"
-                          disabled={instaLoading}
-                          onClick={handleSubmitInstapay}
-                          className="px-3 py-1.5 rounded-lg bg-brand-cyan text-white text-[11px] sm:text-xs font-semibold disabled:opacity-60"
-                        >
-                          {instaLoading ? "جارٍ التسجيل..." : "تسجيل طلب الدفع"}
-                        </button>
-                      </div>
-                    </div>
-
-                    {instaMessage && (
-                      <p className="text-[11px] text-green-700 mt-1">
-                        {instaMessage}
-                      </p>
-                    )}
-                    {instaError && (
-                      <p className="text-[11px] text-red-700 mt-1">
-                        {instaError}
-                      </p>
-                    )}
-                  </div>
-                )}
+                {/* WhatsApp button with logo */}
+                <button
+                  type="button"
+                  onClick={openWhatsappChat}
+                  className="w-full px-3 py-2 rounded-lg bg-[#25D366] text-white text-xs sm:text-sm font-semibold hover:opacity-90 inline-flex items-center justify-center gap-2"
+                >
+                  <span className="text-lg leading-none">🟢</span>
+                  <span>إرسال صورة التحويل على واتساب</span>
+                </button>
               </div>
             )
           )}
@@ -524,7 +417,12 @@ export default function ResidentPage() {
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
               {invoices.map((inv) => (
-                <InvoiceCard key={inv.id} invoice={inv} onRefresh={loadData} />
+                <InvoiceCard
+                  key={inv.id}
+                  invoice={inv}
+                  onRefresh={loadData}
+                  profile={profile}
+                />
               ))}
             </div>
           )}
