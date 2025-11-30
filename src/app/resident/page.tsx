@@ -111,7 +111,6 @@ function InvoiceCard({
   const [showInstapayForm, setShowInstapayForm] = useState(false);
   const [instaAmount, setInstaAmount] = useState("");
   const [instaSenderId, setInstaSenderId] = useState("");
-  const [instaTransactionRef, setInstaTransactionRef] = useState("");
   const [instaLoading, setInstaLoading] = useState(false);
   const [instaMessage, setInstaMessage] = useState<string | null>(null);
   const [instaError, setInstaError] = useState<string | null>(null);
@@ -146,10 +145,19 @@ function InvoiceCard({
     setInstaError(null);
   }
 
+  function openWhatsappChat() {
+    const base = "https://wa.me/201090707277";
+    const text = `السلام عليكم، أنا من سكان مدينة الملاحة الجوية.\nقمت بتحويل مبلغ صيانة عن طريق إنستا باي.\n\nتفاصيل الفاتورة:\n- شهر: ${invoice.month}/${invoice.year}\n- المبلغ: ${invoice.amount.toFixed(
+      2
+    )} جنيه\n\nأرسل الآن صورة من عملية التحويل.`;
+    const url = `${base}?text=${encodeURIComponent(text)}`;
+    window.open(url, "_blank");
+  }
+
   async function handleSubmitInstapay() {
     try {
-      if (!instaAmount || !instaSenderId || !instaTransactionRef) {
-        setInstaError("برجاء إدخال جميع البيانات المطلوبة.");
+      if (!instaAmount || !instaSenderId) {
+        setInstaError("برجاء إدخال المبلغ ورقم الموبايل / حساب إنستا باي.");
         return;
       }
 
@@ -163,15 +171,17 @@ function InvoiceCard({
       setInstaError(null);
       setInstaMessage(null);
 
+      // نرسل Transaction Ref شكلي حتى لا يتكسر الـ Backend
       await submitInstapayPayment(invoice.id, {
         amount: amountNum,
         instapay_sender_id: instaSenderId,
-        transaction_ref: instaTransactionRef,
+        transaction_ref: `WHATSAPP_SCREENSHOT_${invoice.year}_${invoice.month}`,
       });
 
-      setInstaMessage("تم تسجيل عملية إنستا باي وجاري مراجعتها من قِبل الإدارة.");
+      setInstaMessage(
+        "تم تسجيل طلب الدفع الإلكتروني. برجاء إرسال صورة من عملية إنستا باي على واتساب ليتم اعتمادها."
+      );
       setShowInstapayForm(false);
-      setInstaTransactionRef("");
       setInstaSenderId("");
       setInstaAmount("");
 
@@ -189,7 +199,6 @@ function InvoiceCard({
 
   function resetInstapayForm() {
     setShowInstapayForm(false);
-    setInstaTransactionRef("");
     setInstaSenderId("");
     setInstaAmount("");
     setInstaMessage(null);
@@ -238,7 +247,7 @@ function InvoiceCard({
 
           {isPendingConfirmation ? (
             <p className="text-[11px] text-slate-600">
-              تم تسجيل عملية إنستا باي لهذه الفاتورة، وجاري مراجعتها من قِبل الإدارة.
+              تم تسجيل طلب دفع إلكتروني لهذه الفاتورة، وجاري مراجعته من قِبل الإدارة.
             </p>
           ) : (
             canPayOnline && (
@@ -255,10 +264,12 @@ function InvoiceCard({
                   <div className="mt-2 border-t pt-2 space-y-2 text-right">
                     <p className="text-[11px] text-slate-600">
                       بعد إتمام التحويل من خلال تطبيق إنستا باي إلى حساب الاتحاد،
-                      برجاء إدخال بيانات العملية بالأسفل حتى تتم مراجعتها واعتمادها.
+                      برجاء إدخال البيانات التالية، ثم إرسال{" "}
+                      <span className="font-semibold">صورة من عملية التحويل</span>{" "}
+                      على واتساب لتأكيد الدفع.
                     </p>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div>
                         <label className="block text-[11px] text-slate-700 mb-1">
                           المبلغ المحوَّل (جنيه)
@@ -283,35 +294,33 @@ function InvoiceCard({
                           placeholder="مثال: 0100XXXXXXX أو user@instapay"
                         />
                       </div>
-                      <div>
-                        <label className="block text-[11px] text-slate-700 mb-1">
-                          رقم العملية (Transaction Number)
-                        </label>
-                        <input
-                          type="text"
-                          className="w-full border rounded-lg px-2 py-1 text-right text-[11px]"
-                          value={instaTransactionRef}
-                          onChange={(e) => setInstaTransactionRef(e.target.value)}
-                        />
-                      </div>
                     </div>
 
-                    <div className="flex items-center justify-end gap-2 mt-1">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 mt-2">
                       <button
                         type="button"
-                        onClick={resetInstapayForm}
-                        className="px-3 py-1 rounded-lg bg-slate-100 text-slate-700 text-[11px]"
+                        onClick={openWhatsappChat}
+                        className="px-3 py-1.5 rounded-lg bg-green-500 text-white text-[11px] sm:text-xs font-semibold hover:opacity-90"
                       >
-                        إلغاء
+                        مراسلتنا على واتساب وإرسال صورة التحويل
                       </button>
-                      <button
-                        type="button"
-                        disabled={instaLoading}
-                        onClick={handleSubmitInstapay}
-                        className="px-3 py-1.5 rounded-lg bg-brand-cyan text-white text-[11px] sm:text-xs font-semibold disabled:opacity-60"
-                      >
-                        {instaLoading ? "جارٍ التسجيل..." : "تسجيل عملية إنستا باي"}
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={resetInstapayForm}
+                          className="px-3 py-1 rounded-lg bg-slate-100 text-slate-700 text-[11px]"
+                        >
+                          إلغاء
+                        </button>
+                        <button
+                          type="button"
+                          disabled={instaLoading}
+                          onClick={handleSubmitInstapay}
+                          className="px-3 py-1.5 rounded-lg bg-brand-cyan text-white text-[11px] sm:text-xs font-semibold disabled:opacity-60"
+                        >
+                          {instaLoading ? "جارٍ التسجيل..." : "تسجيل طلب الدفع"}
+                        </button>
+                      </div>
                     </div>
 
                     {instaMessage && (
@@ -320,7 +329,9 @@ function InvoiceCard({
                       </p>
                     )}
                     {instaError && (
-                      <p className="text-[11px] text-red-700 mt-1">{instaError}</p>
+                      <p className="text-[11px] text-red-700 mt-1">
+                        {instaError}
+                      </p>
                     )}
                   </div>
                 )}
@@ -332,6 +343,7 @@ function InvoiceCard({
     </div>
   );
 }
+
 
 export default function ResidentPage() {
   const router = useRouter();
