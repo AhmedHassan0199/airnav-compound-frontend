@@ -40,6 +40,7 @@ export default function ResidentEditProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // form state
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [countryCode, setCountryCode] = useState("+20");
@@ -64,24 +65,33 @@ export default function ResidentEditProfilePage() {
         const p = data.person;
         const user = data.user;
 
-        setFullName(p.full_name || "");
+        // ✅ الاسم يتملّى من ال profile أو من ال username كـ fallback
+        setFullName(p.full_name || user.username || "");
 
-        // Try to split existing phone into country code + local
-        if (p.phone) {
+        // ✅ تقسيم رقم الموبايل: كود دولة + باقي الرقم
+        if (p.phone && p.phone.trim() !== "") {
+          const phoneTrimmed = p.phone.trim();
+
           const found = COUNTRY_CODES.find((c) =>
-            p.phone!.startsWith(c.value)
+            phoneTrimmed.startsWith(c.value)
           );
+
           if (found) {
             setCountryCode(found.value);
-            const rest = p.phone.slice(found.value.length);
+            const rest = phoneTrimmed.slice(found.value.length);
             setPhoneLocal(rest);
           } else {
-            // fallback: keep +20 and put whole phone in local
+            // لو اتحفظ بدون +20 مثلًا، نحط +20 ونسيب الرقم كله في local
             setCountryCode("+20");
-            setPhoneLocal(p.phone);
+            setPhoneLocal(phoneTrimmed);
           }
+        } else {
+          // لو مفيش موبايل محفوظ، نخلي الفيلد فاضي
+          setCountryCode("+20");
+          setPhoneLocal("");
         }
 
+        // صلاحية التعديل
         setCanEdit(user.can_edit_profile !== false);
       } catch (err: any) {
         setError(err.message || "تعذر تحميل البيانات.");
@@ -200,35 +210,36 @@ export default function ResidentEditProfilePage() {
               disabled={!canEdit}
             />
           </div>
-        <div>
-        <label className="block mb-1 text-slate-700">رقم الموبايل</label>
-        <div className="flex gap-2 w-full">
-            <select
-            className="border rounded-lg px-3 py-2 text-right bg-white w-[130px] shrink-0"
-            value={countryCode}
-            onChange={(e) => setCountryCode(e.target.value)}
-            disabled={!canEdit}
-            >
-            {COUNTRY_CODES.map((c) => (
-                <option key={c.value} value={c.value}>
-                {c.label}
-                </option>
-            ))}
-            </select>
-            <input
-            type="tel"
-            className="flex-1 min-w-0 border rounded-lg px-3 py-2 text-right"
-            value={phoneLocal}
-            onChange={(e) => setPhoneLocal(e.target.value)}
-            placeholder="مثال: 01234567890"
-            required
-            disabled={!canEdit}
-            />
-        </div>
-        <p className="mt-1 text-[11px] text-slate-500">
-            سيتم حفظ رقم الموبايل بصيغة دولية، مثل: +201234567890
-        </p>
-        </div>
+
+          <div>
+            <label className="block mb-1 text-slate-700">رقم الموبايل</label>
+            <div className="flex gap-2 w-full">
+              <select
+                className="border rounded-lg px-3 py-2 text-right bg-white w-[130px] shrink-0"
+                value={countryCode}
+                onChange={(e) => setCountryCode(e.target.value)}
+                disabled={!canEdit}
+              >
+                {COUNTRY_CODES.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="tel"
+                className="flex-1 min-w-0 border rounded-lg px-3 py-2 text-right"
+                value={phoneLocal}
+                onChange={(e) => setPhoneLocal(e.target.value)}
+                placeholder="مثال: 01234567890"
+                required
+                disabled={!canEdit}
+              />
+            </div>
+            <p className="mt-1 text-[11px] text-slate-500">
+              سيتم حفظ رقم الموبايل بصيغة دولية، مثل: +201234567890
+            </p>
+          </div>
 
           <div>
             <label className="block mb-1 text-slate-700">
@@ -248,10 +259,10 @@ export default function ResidentEditProfilePage() {
             <button
               type="button"
               onClick={() => {
-            if (typeof window !== "undefined") {
-              window.location.href = "/resident";
-            }
-          }}
+                if (typeof window !== "undefined") {
+                  window.location.href = "/resident";
+                }
+              }}
               className="px-3 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs"
             >
               رجوع لصفحة المقيم
