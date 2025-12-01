@@ -65,10 +65,10 @@ export default function ResidentEditProfilePage() {
         const p = data.person;
         const user = data.user;
 
-        // ✅ الاسم يتملّى من ال profile أو من ال username كـ fallback
+        // الاسم يتملّى من ال profile أو من ال username كـ fallback
         setFullName(p.full_name || user.username || "");
 
-        // ✅ تقسيم رقم الموبايل: كود دولة + باقي الرقم
+        // تقسيم رقم الموبايل: كود دولة + باقي الرقم
         if (p.phone && p.phone.trim() !== "") {
           const phoneTrimmed = p.phone.trim();
 
@@ -81,12 +81,11 @@ export default function ResidentEditProfilePage() {
             const rest = phoneTrimmed.slice(found.value.length);
             setPhoneLocal(rest);
           } else {
-            // لو اتحفظ بدون +20 مثلًا، نحط +20 ونسيب الرقم كله في local
+            // لو اتحفظ بدون كود، نحط +20 ونسيب الرقم كله في local
             setCountryCode("+20");
             setPhoneLocal(phoneTrimmed);
           }
         } else {
-          // لو مفيش موبايل محفوظ، نخلي الفيلد فاضي
           setCountryCode("+20");
           setPhoneLocal("");
         }
@@ -198,11 +197,31 @@ export default function ResidentEditProfilePage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-3 text-sm">
+        <form
+          onSubmit={handleSubmit}
+          autoComplete="off"
+          className="space-y-3 text-sm"
+        >
+          {/* Fake fields to absorb Chrome autofill */}
+          <input
+            type="text"
+            name="fake-username"
+            autoComplete="username"
+            className="hidden"
+          />
+          <input
+            type="password"
+            name="fake-password"
+            autoComplete="new-password"
+            className="hidden"
+          />
+
           <div>
             <label className="block mb-1 text-slate-700">الاسم الكامل</label>
             <input
               type="text"
+              name="resident-full-name"
+              autoComplete="off"
               className="w-full border rounded-lg px-3 py-2 text-right"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
@@ -228,6 +247,8 @@ export default function ResidentEditProfilePage() {
               </select>
               <input
                 type="tel"
+                name="resident-phone"
+                autoComplete="off"
                 className="flex-1 min-w-0 border rounded-lg px-3 py-2 text-right"
                 value={phoneLocal}
                 onChange={(e) => setPhoneLocal(e.target.value)}
@@ -247,6 +268,8 @@ export default function ResidentEditProfilePage() {
             </label>
             <input
               type="password"
+              name="resident-new-password"
+              autoComplete="new-password"
               className="w-full border rounded-lg px-3 py-2 text-right"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
