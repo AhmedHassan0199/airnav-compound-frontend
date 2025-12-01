@@ -111,7 +111,7 @@ function InvoiceCard({
   profile: Profile | null;
 }) {
   const [showInstapayForm, setShowInstapayForm] = useState(false);
-  const [instaAmount, setInstaAmount] = useState("");
+  const [instaAmount, setInstaAmount] = useState(""); // now internal only
   const [instaSenderId, setInstaSenderId] = useState("");
   const [instaLoading, setInstaLoading] = useState(false);
   const [instaMessage, setInstaMessage] = useState<string | null>(null);
@@ -149,11 +149,13 @@ function InvoiceCard({
       alert("لم يتم ضبط رابط إنستا باي في إعدادات النظام.");
       return;
     }
+
+    // Open Instapay app / link
     window.open(INSTAPAY_LINK, "_blank");
 
-    if (!instaAmount) {
-      setInstaAmount(invoice.amount.toFixed(2));
-    }
+    // Auto-set amount internally (no field shown to user)
+    setInstaAmount(invoice.amount.toFixed(2));
+
     setShowInstapayForm(true);
     setInstaMessage(null);
     setInstaError(null);
@@ -179,16 +181,14 @@ function InvoiceCard({
 
   async function handleSubmitInstapay() {
     try {
-      if (!instaAmount || !instaSenderId) {
-        setInstaError("برجاء إدخال المبلغ ورقم الموبايل / حساب إنستا باي.");
+      // Now we only validate the sender ID
+      if (!instaSenderId) {
+        setInstaError("برجاء إدخال رقم الموبايل / حساب إنستا باي المرسِل.");
         return;
       }
 
-      const amountNum = parseFloat(instaAmount);
-      if (isNaN(amountNum) || amountNum <= 0) {
-        setInstaError("المبلغ غير صالح.");
-        return;
-      }
+      // Amount is always the invoice amount (resident cannot change it)
+      const amountNum = invoice.amount;
 
       setInstaLoading(true);
       setInstaError(null);
@@ -265,7 +265,7 @@ function InvoiceCard({
         <>
           <p className="mt-1 text-[11px] text-slate-500">
             بعد التحويل عن طريق إنستا باي، لو سمحت ابعت صورة من عملية التحويل على
-            الواتساب لتأكيد الدفع، ثم اضغط على زر تسجيل العملية هنا.
+            الواتساب لتأكيد الدفع، ثم اضغط على زر تأكيد الدفع هنا.
           </p>
 
           {isPendingConfirmation ? (
@@ -287,40 +287,27 @@ function InvoiceCard({
                   <span>الدفع عن طريق إنستا باي</span>
                 </button>
 
-                {/* Instapay details form */}
+                {/* Instapay details form (no amount field) */}
                 {showInstapayForm && (
                   <div className="mt-2 border-t pt-2 space-y-2 text-right">
                     <p className="text-[11px] text-slate-600">
-                      بعد إتمام التحويل من خلال تطبيق إنستا باي إلى حساب الاتحاد،
-                      برجاء إدخال البيانات التالية، ثم إرسال صورة من التحويل على
-                      الواتساب.
+                      بعد إتمام التحويل من خلال تطبيق إنستا باي إلى حساب الاتحاد
+                      بقيمة الفاتورة الموضحة أعلاه، برجاء إدخال رقم الموبايل أو حساب
+                      إنستا باي الذي تم التحويل منه، ثم إرسال صورة من التحويل على
+                      الواتساب، وبعدها تأكيد عملية الدفع.
                     </p>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[11px] text-slate-700 mb-1">
-                          المبلغ المحوَّل (جنيه)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="w-full border rounded-lg px-2 py-1 text-right text-[11px]"
-                          value={instaAmount}
-                          onChange={(e) => setInstaAmount(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] text-slate-700 mb-1">
-                          رقم الموبايل / حساب إنستا باي المرسِل
-                        </label>
-                        <input
-                          type="text"
-                          className="w-full border rounded-lg px-2 py-1 text-right text-[11px]"
-                          value={instaSenderId}
-                          onChange={(e) => setInstaSenderId(e.target.value)}
-                          placeholder="مثال: 0100XXXXXXX أو user@instapay"
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-[11px] text-slate-700 mb-1">
+                        رقم الموبايل / حساب إنستا باي المرسِل
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-lg px-2 py-1 text-right text-[11px]"
+                        value={instaSenderId}
+                        onChange={(e) => setInstaSenderId(e.target.value)}
+                        placeholder="مثال: 0100XXXXXXX أو user@instapay"
+                      />
                     </div>
 
                     {/* WhatsApp button */}
@@ -347,9 +334,7 @@ function InvoiceCard({
                         onClick={handleSubmitInstapay}
                         className="px-3 py-1.5 rounded-lg bg-brand-cyan text-white text-[11px] sm:text-xs font-semibold disabled:opacity-60"
                       >
-                        {instaLoading
-                          ? "جارٍ التسجيل..."
-                          : "تسجيل عملية إنستا باي"}
+                        {instaLoading ? "جارٍ التسجيل..." : "تأكيد عملية الدفع"}
                       </button>
                     </div>
 
