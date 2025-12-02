@@ -162,7 +162,7 @@ function InvoiceCard({
   }
 
   function openWhatsappChat() {
-    const base = "https://wa.me/201090707277";
+    const base = "https://wa.me/971522865074";
 
     const text =
       `السلام عليكم,\n` +
