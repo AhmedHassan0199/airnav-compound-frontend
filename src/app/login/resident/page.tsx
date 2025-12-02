@@ -69,13 +69,33 @@ export default function ResidentLoginPage() {
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          autoComplete="off"
+          className="space-y-4"
+        >
+          {/* Fake fields to absorb Chrome autofill */}
+          <input
+            type="text"
+            name="fake-username"
+            autoComplete="username"
+            className="hidden"
+          />
+          <input
+            type="password"
+            name="fake-password"
+            autoComplete="current-password"
+            className="hidden"
+          />
+
           <div>
             <label className="block mb-1 font-semibold text-gray-700">
               المبنى
             </label>
             <input
               type="text"
+              name="building"
+              autoComplete="off"
               className="w-full px-4 py-3 border rounded-lg text-right focus:outline-none focus:ring-2 focus:ring-[#00A9B7]"
               value={building}
               onChange={(e) => setBuilding(e.target.value)}
@@ -90,6 +110,8 @@ export default function ResidentLoginPage() {
             </label>
             <input
               type="text"
+              name="floor"
+              autoComplete="off"
               className="w-full px-4 py-3 border rounded-lg text-right focus:outline-none focus:ring-2 focus:ring-[#00A9B7]"
               value={floor}
               onChange={(e) => setFloor(e.target.value)}
@@ -104,6 +126,8 @@ export default function ResidentLoginPage() {
             </label>
             <input
               type="text"
+              name="apartment"
+              autoComplete="off"
               className="w-full px-4 py-3 border rounded-lg text-right focus:outline-none focus:ring-2 focus:ring-[#00A9B7]"
               value={apartment}
               onChange={(e) => setApartment(e.target.value)}
@@ -118,6 +142,8 @@ export default function ResidentLoginPage() {
             </label>
             <input
               type="password"
+              name="resident-password"
+              autoComplete="new-password"
               className="w-full px-4 py-3 border rounded-lg text-right focus:outline-none focus:ring-2 focus:ring-[#00A9B7]"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
