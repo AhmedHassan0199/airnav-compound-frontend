@@ -13,9 +13,24 @@ export default function ResidentLoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
+  // Function to detect Arabic numerals
+  function containsArabicNumbers(str: string) {
+    return /[\u0660-\u0669\u06F0-\u06F9]/.test(str);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    // Validate Arabic digits BEFORE submitting
+    if (
+      containsArabicNumbers(building) ||
+      containsArabicNumbers(floor) ||
+      containsArabicNumbers(apartment)
+    ) {
+      setError("من فضلك أكتب الأرقام باللغة الإنجليزية");
+      return;
+    }
 
     try {
       const payload = {
@@ -31,7 +46,6 @@ export default function ResidentLoginPage() {
       localStorage.setItem("username", data.user.username);
       localStorage.setItem("role", data.user.role);
 
-      // Residents go to /resident, any non-resident (if used here) follow same logic as before
       if (data.user.role === "SUPERADMIN") {
         router.push("/superadmin");
       } else if (
@@ -55,7 +69,6 @@ export default function ResidentLoginPage() {
       className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#EDE7DB] to-[#CFEDEF] px-4"
     >
       <div className="bg-white shadow-xl rounded-2xl p-8 w-full max-w-md animate-fadeIn">
-        {/* Title */}
         <h1 className="text-3xl font-bold text-center text-[#008B9A] mb-2">
           دخول الساكن
         </h1>
@@ -63,17 +76,11 @@ export default function ResidentLoginPage() {
           من فضلك أدخل بيانات الوحدة السكنية وكلمة المرور
         </p>
 
-        {/* Error */}
         {error && (
           <div className="text-red-600 text-sm text-center mb-3">{error}</div>
         )}
 
-        {/* Form */}
-        <form
-          onSubmit={handleSubmit}
-          autoComplete="off"
-          className="space-y-4"
-        >
+        <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
           {/* Fake fields to absorb Chrome autofill */}
           <input
             type="text"
@@ -88,54 +95,112 @@ export default function ResidentLoginPage() {
             className="hidden"
           />
 
+          {/* NUMERIC STYLE FIX */}
+          <style>{`
+            input::-webkit-outer-spin-button,
+            input::-webkit-inner-spin-button {
+              -webkit-appearance: none;
+              margin: 0;
+            }
+            input[type=number] {
+              -moz-appearance: textfield;
+            }
+          `}</style>
+
+          {/* BUILDING */}
           <div>
             <label className="block mb-1 font-semibold text-gray-700">
               المبنى
             </label>
             <input
               type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               name="building"
               autoComplete="off"
               className="w-full px-4 py-3 border rounded-lg text-right focus:outline-none focus:ring-2 focus:ring-[#00A9B7]"
               value={building}
-              onChange={(e) => setBuilding(e.target.value)}
-              placeholder="المبنى (مثال: A1)"
+              onChange={(e) => {
+                const v = e.target.value;
+
+                if (containsArabicNumbers(v)) {
+                  setError("من فضلك أكتب الأرقام باللغة الإنجليزية");
+                  return;
+                }
+
+                if (/^\d*$/.test(v)) {
+                  setError("");
+                  setBuilding(v);
+                }
+              }}
+              placeholder="رقم المبنى"
               required
             />
           </div>
 
+          {/* FLOOR */}
           <div>
             <label className="block mb-1 font-semibold text-gray-700">
               الدور
             </label>
             <input
               type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               name="floor"
               autoComplete="off"
               className="w-full px-4 py-3 border rounded-lg text-right focus:outline-none focus:ring-2 focus:ring-[#00A9B7]"
               value={floor}
-              onChange={(e) => setFloor(e.target.value)}
-              placeholder="الدور"
+              onChange={(e) => {
+                const v = e.target.value;
+
+                if (containsArabicNumbers(v)) {
+                  setError("من فضلك أكتب الأرقام باللغة الإنجليزية");
+                  return;
+                }
+
+                if (/^\d*$/.test(v)) {
+                  setError("");
+                  setFloor(v);
+                }
+              }}
+              placeholder="رقم الدور"
               required
             />
           </div>
 
+          {/* APARTMENT */}
           <div>
             <label className="block mb-1 font-semibold text-gray-700">
               الشقة
             </label>
             <input
               type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               name="apartment"
               autoComplete="off"
               className="w-full px-4 py-3 border rounded-lg text-right focus:outline-none focus:ring-2 focus:ring-[#00A9B7]"
               value={apartment}
-              onChange={(e) => setApartment(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+
+                if (containsArabicNumbers(v)) {
+                  setError("من فضلك أكتب الأرقام باللغة الإنجليزية");
+                  return;
+                }
+
+                if (/^\d*$/.test(v)) {
+                  setError("");
+                  setApartment(v);
+                }
+              }}
               placeholder="رقم الشقة"
               required
             />
           </div>
 
+          {/* PASSWORD */}
           <div>
             <label className="block mb-1 font-semibold text-gray-700">
               كلمة المرور
@@ -161,7 +226,6 @@ export default function ResidentLoginPage() {
         </form>
       </div>
 
-      {/* Animation */}
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(20px); }
