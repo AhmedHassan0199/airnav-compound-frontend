@@ -196,8 +196,6 @@ export default function AdminDashboardPage() {
     loadResidents(filters);
   }
 
-
-
   async function loadOnlinePayments() {
     try {
       setOnlineError(null);
@@ -224,7 +222,6 @@ export default function AdminDashboardPage() {
       apartment: apartmentFilter.trim(),
     });
   }
-
 
   async function handleOnlineAction(id: number, action: "approve" | "reject") {
     const confirmText =
@@ -447,7 +444,7 @@ export default function AdminDashboardPage() {
     );
   }
 
-  // Admin view
+  // Admin / Online Admin view
   return (
     <main className="min-h-screen bg-brand-beige p-4" dir="rtl">
       <DashboardHeader title="لوحة تحكم مسؤول التحصيل" />
@@ -466,30 +463,27 @@ export default function AdminDashboardPage() {
 
         {/* Tabs */}
         <div className="flex gap-2 mt-1">
-          {user?.role !== "ONLINE_ADMIN" && (
-            <button
-              onClick={() => setActiveTab("collect")}
-              className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
-                activeTab === "collect"
-                  ? "bg-brand-cyan text-white"
-                  : "bg-white text-slate-700 border border-slate-200"
-              }`}
-            >
-              تحصيل الصيانة
-            </button>
-          )}
-          {user?.role !== "ONLINE_ADMIN" && (
-            <button
-              onClick={() => setActiveTab("view")}
-              className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
-                activeTab === "view"
-                  ? "bg-brand-cyan text-white"
-                  : "bg-white text-slate-700 border border-slate-200"
-              }`}
-            >
-              عرض الفواتير وطباعتها
-            </button>
-          )}
+          {/* ✅ Now visible for ALL admins, including ONLINE_ADMIN */}
+          <button
+            onClick={() => setActiveTab("collect")}
+            className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
+              activeTab === "collect"
+                ? "bg-brand-cyan text-white"
+                : "bg-white text-slate-700 border border-slate-200"
+            }`}
+          >
+            تحصيل الصيانة
+          </button>
+          <button
+            onClick={() => setActiveTab("view")}
+            className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
+              activeTab === "view"
+                ? "bg-brand-cyan text-white"
+                : "bg-white text-slate-700 border border-slate-200"
+            }`}
+          >
+            عرض الفواتير وطباعتها
+          </button>
           <button
             onClick={async () => {
               setActiveTab("profile");
@@ -526,7 +520,6 @@ export default function AdminDashboardPage() {
 
         {/* Search */}
         <div className="bg-white rounded-xl shadow-sm p-4 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
-          
           {/* Building */}
           <div>
             <label className="block mb-1 text-sm font-semibold text-slate-700">
@@ -571,13 +564,12 @@ export default function AdminDashboardPage() {
 
           {/* Search button */}
           <button
-              type="button"                   
-              onClick={handleSearchClick}     
-              className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold hover:bg-brand-cyan/90"
-            >
-              بحث
-            </button>
-        
+            type="button"
+            onClick={handleSearchClick}
+            className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold hover:bg-brand-cyan/90"
+          >
+            بحث
+          </button>
         </div>
 
         {error && (
