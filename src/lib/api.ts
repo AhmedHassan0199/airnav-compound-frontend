@@ -809,7 +809,7 @@ export async function superadminGetPaidInvoicesForMonth(
   params: { year: number; month: number }
 ): Promise<PaidInvoiceRow[]> {
   const res = await fetch(
-    `${API_BASE}/superadmin/paid-invoices?year=${params.year}&month=${params.month}`,
+    `${API_BASE}/admin/paid-invoices?year=${params.year}&month=${params.month}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -831,7 +831,7 @@ export async function superadminDownloadPaidInvoicesPdf(
   params: { year: number; month: number }
 ): Promise<Blob> {
   const res = await fetch(
-    `${API_BASE}/superadmin/paid-invoices/pdf?year=${params.year}&month=${params.month}`,
+    `${API_BASE}/admin/paid-invoices/pdf?year=${params.year}&month=${params.month}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
