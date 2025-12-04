@@ -71,7 +71,7 @@ export default function SuperadminResidentInvoicesPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) return;
-    handleSearch();
+    // handleSearch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user]);
 

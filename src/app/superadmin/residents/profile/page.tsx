@@ -74,7 +74,7 @@ export default function SuperadminResidentProfilePage() {
     if (authLoading) return;
     if (!user) return;
     // ممكن تسيبها فاضية أو تعمل أول load بدون فلاتر
-    handleSearch();
+    // handleSearch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, user]);
 
