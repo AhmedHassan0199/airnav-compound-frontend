@@ -27,6 +27,8 @@ export default function SuperadminHomePage() {
     <main className="min-h-screen bg-brand-beige p-4" dir="rtl">
       <DashboardHeader title="لوحة تحكم المشرف العام" />
       <div className="max-w-xl mx-auto space-y-4">
+        
+        {/* Header */}
         <div className="bg-white rounded-xl shadow-sm p-4">
           <h1 className="text-lg font-bold text-slate-800 mb-2">
             الصفحة الرئيسية للمشرف العام
@@ -36,7 +38,10 @@ export default function SuperadminHomePage() {
           </p>
         </div>
 
+        {/* Buttons */}
         <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
+
+          {/* 1 – توزيع المباني */}
           <button
             onClick={() => router.push("/superadmin/admin-buildings")}
             className="w-full px-4 py-3 bg-brand-cyan text-white rounded-lg text-sm font-semibold hover:bg-[#008B9A] transition-colors"
@@ -44,6 +49,7 @@ export default function SuperadminHomePage() {
             ١- توزيع المباني على المسؤولين
           </button>
 
+          {/* 2 – إنشاء مستخدم موظف */}
           <button
             onClick={() => router.push("/superadmin/users/admin")}
             className="w-full px-4 py-3 bg-white border border-brand-cyan text-brand-cyan rounded-lg text-sm font-semibold hover:bg-[#E0F5F7] transition-colors"
@@ -51,12 +57,30 @@ export default function SuperadminHomePage() {
             ٢- إنشاء مستخدم موظف جديد
           </button>
 
+          {/* 3 – إنشاء مستخدم ساكن */}
           <button
             onClick={() => router.push("/superadmin/users/resident")}
             className="w-full px-4 py-3 bg-white border border-brand-cyan text-brand-cyan rounded-lg text-sm font-semibold hover:bg-[#E0F5F7] transition-colors"
           >
             ٣- إنشاء مستخدم ساكن جديد
           </button>
+
+          {/* ⭐ 4 – تعديل بيانات الساكن */}
+          <button
+            onClick={() => router.push("/superadmin/residents/profile")}
+            className="w-full px-4 py-3 bg-white border border-brand-cyan text-brand-cyan rounded-lg text-sm font-semibold hover:bg-[#E0F5F7] transition-colors"
+          >
+            ٤- تعديل بيانات ساكن
+          </button>
+
+          {/* ⭐ 5 – تعديل حالة فواتير الساكن */}
+          <button
+            onClick={() => router.push("/superadmin/residents/invoices")}
+            className="w-full px-4 py-3 bg-white border border-brand-cyan text-brand-cyan rounded-lg text-sm font-semibold hover:bg-[#E0F5F7] transition-colors"
+          >
+            ٥- تعديل حالة فواتير ساكن
+          </button>
+
         </div>
       </div>
     </main>

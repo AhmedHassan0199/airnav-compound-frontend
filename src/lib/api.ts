@@ -714,78 +714,82 @@ export async function residentUpdateProfile(payload: {
   return data;
 }
 
+// SUPERADMIN – get resident full profile (User + PersonDetails)
 export async function superadminGetResidentProfile(
-  token: string | null,
+  token: string,
   userId: number
 ) {
-  if (!token) throw new Error("Missing token");
-
-  const res = await apiFetch(`${API_BASE}/admin/residents/${userId}/profile`, {
+  const res = await fetch(`${API_BASE}/admin/superadmin/residents/${userId}/profile`, {
     headers: {
       Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
     },
   });
 
-  const data = await res.json().catch(() => ({}));
-
   if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
     throw new Error(data.message || "Failed to load resident profile");
   }
 
-  return data;
+  return res.json();
 }
 
+// SUPERADMIN – update resident profile
 export async function superadminUpdateResidentProfile(
-  token: string | null,
+  token: string,
   userId: number,
   payload: {
-    full_name?: string;
-    phone?: string;
+    full_name: string;
+    building: string;
+    floor: string;
+    apartment: string;
+    phone: string;
     password?: string;
-    reset_can_edit_profile?: boolean;
+    can_edit_profile?: boolean;
   }
 ) {
-  if (!token) throw new Error("Missing token");
-
-  const res = await apiFetch(`${API_BASE}/admin/residents/${userId}/profile`, {
+  const res = await fetch(`${API_BASE}/admin/superadmin/residents/${userId}/profile`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
   });
 
-  const data = await res.json().catch(() => ({}));
-
   if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
     throw new Error(data.message || "Failed to update resident profile");
   }
 
-  return data;
+  return res.json();
 }
 
+// SUPERADMIN – update invoice status
 export async function superadminUpdateInvoiceStatus(
-  token: string | null,
+  token: string,
   invoiceId: number,
-  status: "PAID" | "UNPAID"
+  payload: {
+    status: string;
+    paid_date?: string | null;
+  }
 ) {
-  if (!token) throw new Error("Missing token");
-
-  const res = await apiFetch(`${API_BASE}/admin/invoices/${invoiceId}/status`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ status }),
-  });
-
-  const data = await res.json().catch(() => ({}));
+  const res = await fetch(
+    `${API_BASE}/admin/superadmin/invoices/${invoiceId}/status`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
 
   if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
     throw new Error(data.message || "Failed to update invoice status");
   }
 
-  return data;
+  return res.json();
 }
