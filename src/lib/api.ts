@@ -1,6 +1,15 @@
 // src/lib/api.ts
 import { startRequest, endRequest } from "@/lib/loaderManager";
 
+type PaidInvoiceRow = {
+  invoice_id: number;
+  resident_name: string;
+  building: string;
+  floor: string;
+  apartment: string;
+  payment_date: string; // ISO string
+  payment_type: "CASH" | "ONLINE"; // ONLINE = Instapay
+};
 
 async function apiFetch(input: RequestInfo | URL, init?: RequestInit) {
   startRequest();
@@ -792,4 +801,48 @@ export async function superadminUpdateInvoiceStatus(
   }
 
   return res.json();
+}
+
+// GET JSON rows
+export async function superadminGetPaidInvoicesForMonth(
+  token: string,
+  params: { year: number; month: number }
+): Promise<PaidInvoiceRow[]> {
+  const res = await fetch(
+    `${API_BASE}/superadmin/paid-invoices?year=${params.year}&month=${params.month}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to load paid invoices");
+  }
+
+  return res.json();
+}
+
+// GET PDF
+export async function superadminDownloadPaidInvoicesPdf(
+  token: string,
+  params: { year: number; month: number }
+): Promise<Blob> {
+  const res = await fetch(
+    `${API_BASE}/superadmin/paid-invoices/pdf?year=${params.year}&month=${params.month}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to download PDF");
+  }
+
+  return res.blob();
 }
