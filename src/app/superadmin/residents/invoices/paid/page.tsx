@@ -23,8 +23,7 @@ function formatDateOnly(value: string | null | undefined): string {
   try {
     const d = new Date(value);
     if (!isNaN(d.getTime())) {
-      // YYYY-MM-DD
-      return d.toISOString().slice(0, 10);
+      return d.toISOString().slice(0, 10); // YYYY-MM-DD
     }
     // fallback لو السيرفر مرجع فورمات تاني
     return value.split("T")[0] || value;
@@ -71,9 +70,10 @@ export default function SuperadminPaidInvoicesPage() {
 
     try {
       setSearchLoading(true);
-      const token = typeof window !== "undefined"
-        ? localStorage.getItem("access_token")
-        : null;
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("access_token")
+          : null;
 
       if (!token) {
         setSearchError("لم يتم العثور على جلسة تسجيل الدخول.");
@@ -86,14 +86,18 @@ export default function SuperadminPaidInvoicesPage() {
         month: monthNum,
       });
 
-    console.log("paid invoices API response:", data);
-    // 🔐 حماية: مهما كان شكل الـ data، نضمن إن rows تبقى Array
-    const normalized =
-    Array.isArray(data)
-        ? data
-        : Array.isArray((data as any).items)
-        ? (data as any).items
-        : [];
+      console.log("paid invoices API response:", data);
+
+      // 🔐 Normalization: ندور على الـ Array جوه data.rows أو data.items أو data نفسها
+      let normalized: PaidInvoiceRow[] = [];
+
+      if (Array.isArray(data)) {
+        normalized = data as PaidInvoiceRow[];
+      } else if (Array.isArray((data as any).rows)) {
+        normalized = (data as any).rows as PaidInvoiceRow[];
+      } else if (Array.isArray((data as any).items)) {
+        normalized = (data as any).items as PaidInvoiceRow[];
+      }
 
       setRows(normalized);
     } catch (err: any) {
@@ -124,9 +128,10 @@ export default function SuperadminPaidInvoicesPage() {
     try {
       setPdfLoading(true);
 
-      const token = typeof window !== "undefined"
-        ? localStorage.getItem("access_token")
-        : null;
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("access_token")
+          : null;
 
       if (!token) {
         setPdfError("لم يتم العثور على جلسة تسجيل الدخول.");
