@@ -86,7 +86,16 @@ export default function SuperadminPaidInvoicesPage() {
         month: monthNum,
       });
 
-      setRows(data || []);
+    console.log("paid invoices API response:", data);
+    // 🔐 حماية: مهما كان شكل الـ data، نضمن إن rows تبقى Array
+    const normalized =
+    Array.isArray(data)
+        ? data
+        : Array.isArray((data as any).items)
+        ? (data as any).items
+        : [];
+
+      setRows(normalized);
     } catch (err: any) {
       setSearchError(
         err?.message || "حدث خطأ أثناء تحميل الفواتير المسددة."

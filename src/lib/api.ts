@@ -826,6 +826,7 @@ export async function superadminGetPaidInvoicesForMonth(
 }
 
 // GET PDF
+
 export async function superadminDownloadPaidInvoicesPdf(
   token: string,
   params: { year: number; month: number }
@@ -844,5 +845,5 @@ export async function superadminDownloadPaidInvoicesPdf(
     throw new Error(data.message || "Failed to download PDF");
   }
 
-  return res.blob();
+  return res.json(); // ده هيبقى Array في العادي
 }
