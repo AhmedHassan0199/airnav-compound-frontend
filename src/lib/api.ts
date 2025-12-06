@@ -778,18 +778,15 @@ export async function superadminUpdateResidentProfile(
 export async function superadminUpdateInvoiceStatus(
   token: string,
   invoiceId: number,
-  payload: {
-    status: string;
-    paid_date?: string | null;
-  }
+  payload: { status: string }
 ) {
   const res = await fetch(
-    `${API_BASE}/admin/superadmin/invoices/${invoiceId}/status`,
+    `${process.env.NEXT_PUBLIC_API_BASE}/superadmin/invoices/${invoiceId}`,
     {
-      method: "POST",
+      method: "PUT", // ✅ متوافق مع backend methods=["PUT", "PATCH"]
       headers: {
-        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(payload),
     }
@@ -797,7 +794,7 @@ export async function superadminUpdateInvoiceStatus(
 
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || "Failed to update invoice status");
+    throw new Error(data.message || "فشل في تحديث حالة الفاتورة");
   }
 
   return res.json();
