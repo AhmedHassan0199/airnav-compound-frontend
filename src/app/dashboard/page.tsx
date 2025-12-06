@@ -37,6 +37,7 @@ type Invoice = {
   due_date: string | null;
   paid_date: string | null;
   notes: string | null;
+  payment_type : string | null;
 };
 
 type OnlinePaymentItem = {
@@ -710,6 +711,23 @@ export default function AdminDashboardPage() {
                           <div className="flex items-center justify-between text-xs text-slate-600">
                             <span>السداد:</span>
                             <span>{formatDateTime(inv.paid_date) || "-"}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-slate-600">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-xs ${
+                                inv.payment_type === "ONLINE"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : inv.payment_type === "CASH"
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {inv.payment_type === "ONLINE"
+                                ? "Online"
+                                : inv.payment_type === "CASH"
+                                ? "Cash"
+                                : "—"}
+                            </span>
                           </div>
 
                           <div className="mt-2 flex flex-wrap gap-2">
