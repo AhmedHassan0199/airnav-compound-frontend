@@ -781,7 +781,7 @@ export async function superadminUpdateInvoiceStatus(
   payload: { status: string }
 ) {
   const res = await fetch(
-    `${process.env.API_BASE}/admin/superadmin/invoices/${invoiceId}`,
+    `${API_BASE}/admin/superadmin/invoices/${invoiceId}`,
     {
       method: "PUT", // ✅ متوافق مع backend methods=["PUT", "PATCH"]
       headers: {
