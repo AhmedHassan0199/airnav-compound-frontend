@@ -93,6 +93,7 @@ export default function AdminDashboardPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
 
   // Payment form state
   const [collectingInvoice, setCollectingInvoice] = useState<Invoice | null>(
@@ -162,19 +163,19 @@ export default function AdminDashboardPage() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
 
-  // Load initial residents
-  useEffect(() => {
-    if (authLoading) return;
-    if (typeof window === "undefined") return;
+  // // Load initial residents
+  // useEffect(() => {
+  //   if (authLoading) return;
+  //   if (typeof window === "undefined") return;
 
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      setError("لم يتم العثور على جلسة تسجيل الدخول");
-      return;
-    }
+  //   const token = localStorage.getItem("access_token");
+  //   if (!token) {
+  //     setError("لم يتم العثور على جلسة تسجيل الدخول");
+  //     return;
+  //   }
 
-    loadResidents();
-  }, [authLoading]);
+  //   loadResidents();
+  // }, [authLoading]);
 
   type ResidentFilters = {
     building?: string;
@@ -182,10 +183,24 @@ export default function AdminDashboardPage() {
     apartment?: string;
   };
 
-  async function loadResidents(filters?: ResidentFilters) {
-    const token = localStorage.getItem("access_token");
-    const data = await adminSearchResidents(token, filters || {});
-    setResidents(data);
+    async function loadResidents(filters?: ResidentFilters) {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        setError("لم يتم العثور على جلسة تسجيل الدخول");
+        return;
+      }
+
+      const data = await adminSearchResidents(token, filters || {});
+      setResidents(data);
+      setHasSearched(true); // ✅ عشان نعرف إن المستخدم عمل بحث
+    } catch (err: any) {
+      setError(err.message || "حدث خطأ أثناء تحميل السكان");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleSearchClick() {
@@ -213,15 +228,6 @@ export default function AdminDashboardPage() {
     }
   }
 
-  async function handleSearch(e?: React.FormEvent) {
-    if (e) e.preventDefault();
-
-    await loadResidents({
-      building: buildingFilter.trim(),
-      floor: floorFilter.trim(),
-      apartment: apartmentFilter.trim(),
-    });
-  }
 
   async function handleOnlineAction(id: number, action: "approve" | "reject") {
     const confirmText =
@@ -588,6 +594,10 @@ export default function AdminDashboardPage() {
               </h2>
               {loading && residents.length === 0 ? (
                 <p className="text-sm text-slate-600">جارٍ تحميل السكان...</p>
+              ) : !hasSearched ? (
+                <p className="text-sm text-slate-600">
+                  اكتب بيانات المبنى/الدور/الشقة ثم اضغط "بحث" لعرض السكان.
+                </p>
               ) : residents.length === 0 ? (
                 <p className="text-sm text-slate-600">
                   لا توجد نتائج. جرّب تعديل بيانات البحث.
@@ -928,6 +938,10 @@ export default function AdminDashboardPage() {
               </h2>
               {loading && residents.length === 0 ? (
                 <p className="text-sm text-slate-600">جارٍ تحميل السكان...</p>
+              ) : !hasSearched ? (
+                <p className="text-sm text-slate-600">
+                  اكتب بيانات المبنى/الدور/الشقة ثم اضغط "بحث" لعرض السكان.
+                </p>
               ) : residents.length === 0 ? (
                 <p className="text-sm text-slate-600">
                   لا توجد نتائج. جرّب تعديل بيانات البحث.
