@@ -199,14 +199,27 @@ export default function TreasurerPage() {
         month: monthNum,
       });
 
-      // لو الـ API بيرجع { buildings: [...] }
-      const list: BuildingInvoiceStat[] = Array.isArray(resp)
+      // resp = { year, month, buildings, top5, bottom5 }
+      const rawList: any[] = Array.isArray(resp)
         ? resp
         : Array.isArray((resp as any).buildings)
         ? (resp as any).buildings
         : [];
 
-      setBuildingStats(list);
+      const normalized: BuildingInvoiceStat[] = rawList.map((b) => ({
+        building: b.building,
+        paid_invoices: b.paid_invoices ?? 0,
+        total_apartments: b.total_apartments ?? 0,
+        // هنا بنحوّل percentage → paid_percentage
+        paid_percentage:
+          typeof b.paid_percentage === "number"
+            ? b.paid_percentage
+            : typeof b.percentage === "number"
+            ? b.percentage
+            : 0,
+      }));
+
+      setBuildingStats(normalized);
       setBuildingStatsLoadedOnce(true);
     } catch (err: any) {
       setBuildingStatsError(
@@ -1651,7 +1664,7 @@ export default function TreasurerPage() {
                               <div className="flex justify-between">
                                 <span>{label}</span>
                                 <span>
-                                  {b.paid_percentage.toFixed(1)}%{" "}
+                                  {(b.paid_percentage ?? 0).toFixed(1)}%{" "}
                                   <span className="text-slate-500">
                                     ({b.paid_invoices}/{b.total_apartments})
                                   </span>
@@ -1686,7 +1699,7 @@ export default function TreasurerPage() {
                               <div className="flex justify-between">
                                 <span>{label}</span>
                                 <span>
-                                  {b.paid_percentage.toFixed(1)}%{" "}
+                                  {(b.paid_percentage ?? 0).toFixed(1)}%{" "}
                                   <span className="text-slate-500">
                                     ({b.paid_invoices}/{b.total_apartments})
                                   </span>
