@@ -18,6 +18,14 @@ export type BuildingInvoiceStat = {
   paid_percentage: number;
 };
 
+export type BuildingAmountStat = {
+  building: string | null;
+  paid_amount: number;
+  expected_amount: number;
+  total_apartments: number;
+  paid_percentage: number;
+};
+
 async function apiFetch(input: RequestInfo | URL, init?: RequestInit) {
   startRequest();
   try {
@@ -887,3 +895,49 @@ export async function treasurerGetBuildingInvoiceStats(
   return res.json() as Promise<BuildingInvoiceStat[]>;
 }
 
+export async function treasurerGetBuildingAmountStats(
+  token: string | null,
+  params: { year?: number; month?: number }
+): Promise<{
+  year: number | null;
+  month: number | null;
+  buildings: BuildingAmountStat[];
+  top5: BuildingAmountStat[];
+  bottom5: BuildingAmountStat[];
+}> {
+  if (!token) throw new Error("Not authenticated");
+
+  const url = new URL(
+    `${process.env.NEXT_PUBLIC_API_BASE}/treasurer/buildings/paid-amount-ranking`
+  );
+  if (params.year) url.searchParams.set("year", String(params.year));
+  if (params.month) url.searchParams.set("month", String(params.month));
+
+  const res = await fetch(url.toString(), {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error("تعذر تحميل إحصائيات التحصيل بالمبالغ لكل عمارة");
+  }
+
+  const data = await res.json();
+
+  const mapOne = (b: any): BuildingAmountStat => ({
+    building: b.building ?? null,
+    paid_amount: b.paid_amount ?? 0,
+    expected_amount: b.expected_amount ?? 0,
+    total_apartments: b.total_apartments ?? 0,
+    paid_percentage: b.percentage ?? 0,
+  });
+
+  return {
+    year: data.year ?? null,
+    month: data.month ?? null,
+    buildings: (data.buildings ?? []).map(mapOne),
+    top5: (data.top5 ?? []).map(mapOne),
+    bottom5: (data.bottom5 ?? []).map(mapOne),
+  };
+}

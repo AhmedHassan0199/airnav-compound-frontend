@@ -4,7 +4,7 @@ import DashboardHeader from "@/components/DashboardHeader";
 import { formatDateTime } from "@/lib/dateFormat";
 import { useEffect, useMemo, useState } from "react";
 import { useRequireAuth } from "@/lib/auth";
-import type { BuildingInvoiceStat } from "@/lib/api";
+import type { BuildingInvoiceStat, BuildingAmountStat } from "@/lib/api";
 import {
   treasurerGetAdmins,
   treasurerGetAdminDetails,
@@ -16,6 +16,7 @@ import {
   treasurerGetLateResidents,
   treasurerNotifyLateResidents,
   treasurerGetBuildingInvoiceStats,
+  treasurerGetBuildingAmountStats,
 } from "@/lib/api";
 
 type AdminSummary = {
@@ -165,6 +166,12 @@ export default function TreasurerPage() {
   const [buildingStatsYear, setBuildingStatsYear] = useState<string>("");
   const [buildingStatsMonth, setBuildingStatsMonth] = useState<string>("");
 
+  // Buildings Stats (by amount)
+  const [buildingAmountStats, setBuildingAmountStats] = useState<BuildingAmountStat[]>([]);
+  const [buildingAmountStatsLoading, setBuildingAmountStatsLoading] = useState(false);
+  const [buildingAmountStatsError, setBuildingAmountStatsError] = useState<string | null>(null);
+  const [buildingAmountLoadedOnce, setBuildingAmountLoadedOnce] = useState(false);
+
   // Load initial data
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -228,6 +235,31 @@ export default function TreasurerPage() {
       );
     } finally {
       setBuildingStatsLoading(false);
+    }
+  }
+
+  async function loadBuildingAmountStats() {
+    try {
+      setBuildingAmountStatsError(null);
+      setBuildingAmountStatsLoading(true);
+      const token = localStorage.getItem("access_token");
+
+      const yearNum = buildingStatsYear ? parseInt(buildingStatsYear, 10) : undefined;
+      const monthNum = buildingStatsMonth ? parseInt(buildingStatsMonth, 10) : undefined;
+
+      const data = await treasurerGetBuildingAmountStats(token, {
+        year: yearNum,
+        month: monthNum,
+      });
+
+      setBuildingAmountStats(data.buildings);
+      setBuildingAmountLoadedOnce(true);
+    } catch (err: any) {
+      setBuildingAmountStatsError(
+        err.message || "تعذر تحميل إحصائيات التحصيل بالمبالغ لكل عمارة"
+      );
+    } finally {
+      setBuildingAmountStatsLoading(false);
     }
   }
 
@@ -531,6 +563,20 @@ export default function TreasurerPage() {
     return { top5, bottom5, maxPct };
   }, [buildingStats]);
 
+  const buildingsAmountRanking = useMemo(() => {
+    if (!buildingAmountStats || buildingAmountStats.length === 0) {
+      return { top5: [], bottom5: [] };
+    }
+    const sorted = buildingAmountStats
+      .slice()
+      .sort((a, b) => b.paid_percentage - a.paid_percentage);
+
+    const top5 = sorted.slice(0, 5);
+    const bottom5 = sorted.slice(-5).reverse();
+
+    return { top5, bottom5 };
+  }, [buildingAmountStats]);
+
   const statsOverdueRate = useMemo(() => {
     if (!summary || !summary.total_invoices) return 0;
     const unpaid = summary.unpaid_invoices || 0;
@@ -718,6 +764,9 @@ export default function TreasurerPage() {
               setActiveTab("STATS");
               if (!buildingStatsLoadedOnce) {
                 await loadBuildingStats();
+              }
+              if (!buildingAmountLoadedOnce) {
+                await loadBuildingAmountStats();
               }
             }}
             className={`px-3 py-2 rounded-lg ${
@@ -1619,7 +1668,10 @@ export default function TreasurerPage() {
                   </select>
                   <button
                     type="button"
-                    onClick={loadBuildingStats}
+                    onClick={() => {
+                      loadBuildingStats();
+                      loadBuildingAmountStats();
+                    }}
                     className="px-3 py-1.5 rounded-lg bg-slate-800 text-white"
                   >
                     تحديث الترتيب
@@ -1703,6 +1755,111 @@ export default function TreasurerPage() {
                                   {pct.toFixed(1)}%{" "}
                                   <span className="text-slate-500">
                                     ({b.paid_invoices}/{b.total_apartments})
+                                  </span>
+                                </span>
+                              </div>
+                              <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-sky-500"
+                                  style={{ width: `${widthPct}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+            </div>
+
+            {/* NEW: ترتيب العمارات حسب نسبة التحصيل بالمبالغ (جنيه) */}
+            <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-slate-800">
+                ترتيب العمارات حسب نسبة التحصيل بالمبالغ (PAID)
+              </h3>
+              <p className="text-xs text-slate-600">
+                يتم حساب النسبة لكل عمارة كالتالي:
+                إجمالي مبالغ الفواتير المسددة ÷ (عدد الشقق × ٢٠٠ جنيه) × ١٠٠.
+              </p>
+
+              {buildingAmountStatsLoading && (
+                <p className="text-sm text-slate-600">
+                  جارٍ تحميل بيانات العمارات (مبالغ)...
+                </p>
+              )}
+
+              {buildingAmountStatsError && (
+                <p className="text-sm text-red-600">{buildingAmountStatsError}</p>
+              )}
+
+              {!buildingAmountStatsLoading &&
+                !buildingAmountStatsError &&
+                buildingAmountStats.length === 0 && (
+                  <p className="text-sm text-slate-600">
+                    لا توجد بيانات كافية لعرض ترتيب العمارات بالمبالغ في الفترة المحددة.
+                  </p>
+                )}
+
+              {!buildingAmountStatsLoading &&
+                !buildingAmountStatsError &&
+                buildingAmountStats.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
+                    {/* Top 5 by amount */}
+                    <div>
+                      <h4 className="font-semibold text-slate-800 mb-2">
+                        أعلى ٥ عمارات من حيث نسبة التحصيل بالمبالغ
+                      </h4>
+                      <div className="space-y-2">
+                        {buildingsAmountRanking.top5.map((b) => {
+                          const label = b.building || "عمارة غير محددة";
+                          const pct = b.paid_percentage ?? 0;
+                          const widthPct = Math.min(100, Math.max(0, pct));
+
+                          return (
+                            <div key={label} className="space-y-1">
+                              <div className="flex justify-between">
+                                <span>{label}</span>
+                                <span>
+                                  {pct.toFixed(1)}%{" "}
+                                  <span className="text-slate-500">
+                                    ({b.paid_amount.toFixed(0)}/
+                                    {b.expected_amount.toFixed(0)} جنيه)
+                                  </span>
+                                </span>
+                              </div>
+                              <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-emerald-500"
+                                  style={{ width: `${widthPct}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Bottom 5 by amount */}
+                    <div>
+                      <h4 className="font-semibold text-slate-800 mb-2">
+                        أقل ٥ عمارات من حيث نسبة التحصيل بالمبالغ
+                      </h4>
+                      <div className="space-y-2">
+                        {buildingsAmountRanking.bottom5.map((b) => {
+                          const label = b.building || "عمارة غير محددة";
+                          const pct = b.paid_percentage ?? 0;
+                          const widthPct = Math.min(100, Math.max(0, pct));
+
+                          return (
+                            <div key={label} className="space-y-1">
+                              <div className="flex justify-between">
+                                <span>{label}</span>
+                                <span>
+                                  {pct.toFixed(1)}%{" "}
+                                  <span className="text-slate-500">
+                                    ({b.paid_amount.toFixed(0)}/
+                                    {b.expected_amount.toFixed(0)} جنيه)
                                   </span>
                                 </span>
                               </div>
