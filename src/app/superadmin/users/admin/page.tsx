@@ -14,6 +14,7 @@ const ADMIN_ROLES = [
   { value: "TREASURER", label: "أمين صندوق" },
   { value: "SUPERADMIN", label: "مشرف عام" },
   { value: "ONLINE_ADMIN", label: "مسؤول تحصيل اونلاين" },
+  { value: "TEST_ADMIN", label: "مسؤول تصحيل تجربه" },
 ];
 
 const COUNTRY_CODES = [
