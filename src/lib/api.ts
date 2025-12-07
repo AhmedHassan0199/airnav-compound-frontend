@@ -14,6 +14,8 @@ type PaidInvoiceRow = {
 export type BuildingInvoiceStat = {
   building: string | null;
   paid_invoices: number;
+  total_apartments: number;
+  paid_percentage: number;
 };
 
 async function apiFetch(input: RequestInfo | URL, init?: RequestInit) {

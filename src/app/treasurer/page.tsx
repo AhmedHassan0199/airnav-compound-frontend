@@ -202,7 +202,8 @@ export default function TreasurerPage() {
       setBuildingStatsLoadedOnce(true);
     } catch (err: any) {
       setBuildingStatsError(
-        err.message || "تعذر تحميل إحصائيات عدد الفواتير المسددة لكل عمارة"
+        err.message ||
+          "تعذر تحميل إحصائيات نسبة الفواتير المسددة لكل عمارة"
       );
     } finally {
       setBuildingStatsLoading(false);
@@ -491,21 +492,21 @@ export default function TreasurerPage() {
   }, [lateResidents]);
 
   const buildingsRanking = useMemo(() => {
-  if (!buildingStats || buildingStats.length === 0) {
-    return { top5: [], bottom5: [], maxPaid: 0 };
-  }
+    if (!buildingStats || buildingStats.length === 0) {
+      return { top5: [], bottom5: [], maxPct: 0 };
+    }
 
-  const sorted = buildingStats
-    .slice()
-    .sort((a, b) => b.paid_invoices - a.paid_invoices);
+    const sorted = buildingStats
+      .slice()
+      .sort((a, b) => b.paid_percentage - a.paid_percentage);
 
-  const maxPaid = sorted[0]?.paid_invoices || 0;
+    const maxPct = sorted[0]?.paid_percentage || 0;
 
-  const top5 = sorted.slice(0, 5);
-  const bottom5 = sorted.slice(-5).reverse(); // أقل 5
+    const top5 = sorted.slice(0, 5);
+    const bottom5 = sorted.slice(-5).reverse(); // أقل ٥ نسب تحصيل
 
-  return { top5, bottom5, maxPaid };
-}, [buildingStats]);
+    return { top5, bottom5, maxPct };
+  }, [buildingStats]);
 
   const statsOverdueRate = useMemo(() => {
     if (!summary || !summary.total_invoices) return 0;
@@ -1558,15 +1559,14 @@ export default function TreasurerPage() {
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold text-slate-800">
-                    ترتيب العمارات حسب عدد الفواتير المسددة (PAID)
+                    ترتيب العمارات حسب نسبة الفواتير المسددة (PAID)
                   </h3>
                   <p className="text-xs text-slate-600">
-                    يمكنك اختيار سنة وشهر لعرض الترتيب لفترة معينة، أو تركهم فارغين
-                    لعرض جميع السنوات والشهور.
+                    يتم حساب نسبة التحصيل لكل عمارة كالتالي:
+                    عدد الفواتير المسددة ÷ عدد الشقق (أقصى رقم شقة × ٧ أدوار).
                   </p>
                 </div>
 
-                {/* فلاتر السنة/الشهر */}
                 <div className="flex flex-wrap gap-2 text-xs sm:text-sm">
                   <input
                     type="number"
@@ -1616,7 +1616,7 @@ export default function TreasurerPage() {
                 !buildingStatsError &&
                 buildingStats.length === 0 && (
                   <p className="text-sm text-slate-600">
-                    لا توجد بيانات فواتير مسددة كافية لعرض ترتيب العمارات في الفترة المحددة.
+                    لا توجد بيانات كافية لعرض ترتيب العمارات في الفترة المحددة.
                   </p>
                 )}
 
@@ -1627,20 +1627,25 @@ export default function TreasurerPage() {
                     {/* Top 5 */}
                     <div>
                       <h4 className="font-semibold text-slate-800 mb-2">
-                        أعلى ٥ عمارات من حيث عدد الفواتير المسددة
+                        أعلى ٥ عمارات من حيث نسبة التحصيل
                       </h4>
                       <div className="space-y-2">
                         {buildingsRanking.top5.map((b) => {
-                          const widthPct =
-                            buildingsRanking.maxPaid > 0
-                              ? (b.paid_invoices / buildingsRanking.maxPaid) * 100
-                              : 0;
                           const label = b.building || "عمارة غير محددة";
+                          const widthPct =
+                            buildingsRanking.maxPct > 0
+                              ? (b.paid_percentage / buildingsRanking.maxPct) * 100
+                              : 0;
                           return (
                             <div key={label} className="space-y-1">
                               <div className="flex justify-between">
                                 <span>{label}</span>
-                                <span>{b.paid_invoices} فاتورة مسددة</span>
+                                <span>
+                                  {b.paid_percentage.toFixed(1)}%{" "}
+                                  <span className="text-slate-500">
+                                    ({b.paid_invoices}/{b.total_apartments})
+                                  </span>
+                                </span>
                               </div>
                               <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                                 <div
@@ -1657,20 +1662,25 @@ export default function TreasurerPage() {
                     {/* Least 5 */}
                     <div>
                       <h4 className="font-semibold text-slate-800 mb-2">
-                        أقل ٥ عمارات من حيث عدد الفواتير المسددة
+                        أقل ٥ عمارات من حيث نسبة التحصيل
                       </h4>
                       <div className="space-y-2">
                         {buildingsRanking.bottom5.map((b) => {
-                          const widthPct =
-                            buildingsRanking.maxPaid > 0
-                              ? (b.paid_invoices / buildingsRanking.maxPaid) * 100
-                              : 0;
                           const label = b.building || "عمارة غير محددة";
+                          const widthPct =
+                            buildingsRanking.maxPct > 0
+                              ? (b.paid_percentage / buildingsRanking.maxPct) * 100
+                              : 0;
                           return (
                             <div key={label} className="space-y-1">
                               <div className="flex justify-between">
                                 <span>{label}</span>
-                                <span>{b.paid_invoices} فاتورة مسددة</span>
+                                <span>
+                                  {b.paid_percentage.toFixed(1)}%{" "}
+                                  <span className="text-slate-500">
+                                    ({b.paid_invoices}/{b.total_apartments})
+                                  </span>
+                                </span>
                               </div>
                               <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                                 <div
@@ -1686,6 +1696,7 @@ export default function TreasurerPage() {
                   </div>
                 )}
             </div>
+
           </div>
         )}
       </div>
