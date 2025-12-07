@@ -1655,16 +1655,17 @@ export default function TreasurerPage() {
                       <div className="space-y-2">
                         {buildingsRanking.top5.map((b) => {
                           const label = b.building || "عمارة غير محددة";
-                          const widthPct =
-                            buildingsRanking.maxPct > 0
-                              ? (b.paid_percentage / buildingsRanking.maxPct) * 100
-                              : 0;
+                          const pct = b.paid_percentage ?? 0;
+
+                          // كل bar على أساس نسبته من 100%
+                          const widthPct = Math.min(100, Math.max(0, pct));
+
                           return (
                             <div key={label} className="space-y-1">
                               <div className="flex justify-between">
                                 <span>{label}</span>
                                 <span>
-                                  {(b.paid_percentage ?? 0).toFixed(1)}%{" "}
+                                  {pct.toFixed(1)}%{" "}
                                   <span className="text-slate-500">
                                     ({b.paid_invoices}/{b.total_apartments})
                                   </span>
@@ -1673,7 +1674,7 @@ export default function TreasurerPage() {
                               <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                                 <div
                                   className="h-full bg-emerald-500"
-                                  style={{ width: `${Math.min(100, widthPct)}%` }}
+                                  style={{ width: `${widthPct}%` }}
                                 />
                               </div>
                             </div>
@@ -1690,16 +1691,16 @@ export default function TreasurerPage() {
                       <div className="space-y-2">
                         {buildingsRanking.bottom5.map((b) => {
                           const label = b.building || "عمارة غير محددة";
-                          const widthPct =
-                            buildingsRanking.maxPct > 0
-                              ? (b.paid_percentage / buildingsRanking.maxPct) * 100
-                              : 0;
+                          const pct = b.paid_percentage ?? 0;
+
+                          const widthPct = Math.min(100, Math.max(0, pct));
+
                           return (
                             <div key={label} className="space-y-1">
                               <div className="flex justify-between">
                                 <span>{label}</span>
                                 <span>
-                                  {(b.paid_percentage ?? 0).toFixed(1)}%{" "}
+                                  {pct.toFixed(1)}%{" "}
                                   <span className="text-slate-500">
                                     ({b.paid_invoices}/{b.total_apartments})
                                   </span>
@@ -1708,7 +1709,7 @@ export default function TreasurerPage() {
                               <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                                 <div
                                   className="h-full bg-sky-500"
-                                  style={{ width: `${Math.min(100, widthPct)}%` }}
+                                  style={{ width: `${widthPct}%` }}
                                 />
                               </div>
                             </div>
