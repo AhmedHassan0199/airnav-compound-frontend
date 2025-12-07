@@ -161,6 +161,9 @@ export default function TreasurerPage() {
   const [buildingStatsLoading, setBuildingStatsLoading] = useState(false);
   const [buildingStatsError, setBuildingStatsError] = useState<string | null>(null);
   const [buildingStatsLoadedOnce, setBuildingStatsLoadedOnce] = useState(false);
+  // فلتر سنة/شهر للـ ranking
+  const [buildingStatsYear, setBuildingStatsYear] = useState<string>("");
+  const [buildingStatsMonth, setBuildingStatsMonth] = useState<string>("");
 
   // Load initial data
   useEffect(() => {
@@ -187,12 +190,19 @@ export default function TreasurerPage() {
       setBuildingStatsError(null);
       setBuildingStatsLoading(true);
       const token = localStorage.getItem("access_token");
-      const data = await treasurerGetBuildingInvoiceStats(token);
+
+      const yearNum = buildingStatsYear ? parseInt(buildingStatsYear, 10) : undefined;
+      const monthNum = buildingStatsMonth ? parseInt(buildingStatsMonth, 10) : undefined;
+
+      const data = await treasurerGetBuildingInvoiceStats(token, {
+        year: yearNum,
+        month: monthNum,
+      });
       setBuildingStats(data);
       setBuildingStatsLoadedOnce(true);
     } catch (err: any) {
       setBuildingStatsError(
-        err.message || "تعذر تحميل إحصائيات عدد الفواتير لكل عمارة"
+        err.message || "تعذر تحميل إحصائيات عدد الفواتير المسددة لكل عمارة"
       );
     } finally {
       setBuildingStatsLoading(false);
@@ -481,26 +491,21 @@ export default function TreasurerPage() {
   }, [lateResidents]);
 
   const buildingsRanking = useMemo(() => {
-    if (!buildingStats || buildingStats.length === 0) {
-      return { top5: [], bottom5: [], maxTotal: 0 };
-    }
+  if (!buildingStats || buildingStats.length === 0) {
+    return { top5: [], bottom5: [], maxPaid: 0 };
+  }
 
-    // sort desc by total_invoices
-    const sorted = buildingStats
-      .slice()
-      .sort((a, b) => b.total_invoices - a.total_invoices);
+  const sorted = buildingStats
+    .slice()
+    .sort((a, b) => b.paid_invoices - a.paid_invoices);
 
-    const maxTotal = sorted[0]?.total_invoices || 0;
+  const maxPaid = sorted[0]?.paid_invoices || 0;
 
-    const top5 = sorted.slice(0, 5);
+  const top5 = sorted.slice(0, 5);
+  const bottom5 = sorted.slice(-5).reverse(); // أقل 5
 
-    // أقل 5: من آخر الليست
-    const bottom5 = sorted
-      .slice(-5)          // آخر 5 عناصر
-      .reverse();        // نخلي الأقل في الأول
-
-    return { top5, bottom5, maxTotal };
-  }, [buildingStats]);
+  return { top5, bottom5, maxPaid };
+}, [buildingStats]);
 
   const statsOverdueRate = useMemo(() => {
     if (!summary || !summary.total_invoices) return 0;
@@ -1550,9 +1555,54 @@ export default function TreasurerPage() {
 
             {/* NEW: ترتيب العمارات حسب عدد الفواتير */}
             <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
-              <h3 className="text-sm font-semibold text-slate-800">
-                ترتيب العمارات حسب عدد الفواتير
-              </h3>
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-800">
+                    ترتيب العمارات حسب عدد الفواتير المسددة (PAID)
+                  </h3>
+                  <p className="text-xs text-slate-600">
+                    يمكنك اختيار سنة وشهر لعرض الترتيب لفترة معينة، أو تركهم فارغين
+                    لعرض جميع السنوات والشهور.
+                  </p>
+                </div>
+
+                {/* فلاتر السنة/الشهر */}
+                <div className="flex flex-wrap gap-2 text-xs sm:text-sm">
+                  <input
+                    type="number"
+                    className="border rounded-lg px-2 py-1 text-right w-24"
+                    placeholder="السنة"
+                    value={buildingStatsYear}
+                    onChange={(e) => setBuildingStatsYear(e.target.value)}
+                  />
+                  <select
+                    className="border rounded-lg px-2 py-1 text-right w-28"
+                    value={buildingStatsMonth}
+                    onChange={(e) => setBuildingStatsMonth(e.target.value)}
+                  >
+                    <option value="">كل الشهور</option>
+                    <option value="1">يناير</option>
+                    <option value="2">فبراير</option>
+                    <option value="3">مارس</option>
+                    <option value="4">أبريل</option>
+                    <option value="5">مايو</option>
+                    <option value="6">يونيو</option>
+                    <option value="7">يوليو</option>
+                    <option value="8">أغسطس</option>
+                    <option value="9">سبتمبر</option>
+                    <option value="10">أكتوبر</option>
+                    <option value="11">نوفمبر</option>
+                    <option value="12">ديسمبر</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={loadBuildingStats}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 text-white"
+                  >
+                    تحديث الترتيب
+                  </button>
+                </div>
+              </div>
 
               {buildingStatsLoading && (
                 <p className="text-sm text-slate-600">جارٍ تحميل بيانات العمارات...</p>
@@ -1566,7 +1616,7 @@ export default function TreasurerPage() {
                 !buildingStatsError &&
                 buildingStats.length === 0 && (
                   <p className="text-sm text-slate-600">
-                    لا توجد بيانات فواتير كافية لعرض ترتيب العمارات حتى الآن.
+                    لا توجد بيانات فواتير مسددة كافية لعرض ترتيب العمارات في الفترة المحددة.
                   </p>
                 )}
 
@@ -1577,20 +1627,20 @@ export default function TreasurerPage() {
                     {/* Top 5 */}
                     <div>
                       <h4 className="font-semibold text-slate-800 mb-2">
-                        أعلى ٥ عمارات من حيث عدد الفواتير
+                        أعلى ٥ عمارات من حيث عدد الفواتير المسددة
                       </h4>
                       <div className="space-y-2">
                         {buildingsRanking.top5.map((b) => {
                           const widthPct =
-                            buildingsRanking.maxTotal > 0
-                              ? (b.total_invoices / buildingsRanking.maxTotal) * 100
+                            buildingsRanking.maxPaid > 0
+                              ? (b.paid_invoices / buildingsRanking.maxPaid) * 100
                               : 0;
                           const label = b.building || "عمارة غير محددة";
                           return (
                             <div key={label} className="space-y-1">
                               <div className="flex justify-between">
                                 <span>{label}</span>
-                                <span>{b.total_invoices} فاتورة</span>
+                                <span>{b.paid_invoices} فاتورة مسددة</span>
                               </div>
                               <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                                 <div
@@ -1607,20 +1657,20 @@ export default function TreasurerPage() {
                     {/* Least 5 */}
                     <div>
                       <h4 className="font-semibold text-slate-800 mb-2">
-                        أقل ٥ عمارات من حيث عدد الفواتير
+                        أقل ٥ عمارات من حيث عدد الفواتير المسددة
                       </h4>
                       <div className="space-y-2">
                         {buildingsRanking.bottom5.map((b) => {
                           const widthPct =
-                            buildingsRanking.maxTotal > 0
-                              ? (b.total_invoices / buildingsRanking.maxTotal) * 100
+                            buildingsRanking.maxPaid > 0
+                              ? (b.paid_invoices / buildingsRanking.maxPaid) * 100
                               : 0;
                           const label = b.building || "عمارة غير محددة";
                           return (
                             <div key={label} className="space-y-1">
                               <div className="flex justify-between">
                                 <span>{label}</span>
-                                <span>{b.total_invoices} فاتورة</span>
+                                <span>{b.paid_invoices} فاتورة مسددة</span>
                               </div>
                               <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                                 <div
@@ -1636,7 +1686,6 @@ export default function TreasurerPage() {
                   </div>
                 )}
             </div>
-
           </div>
         )}
       </div>

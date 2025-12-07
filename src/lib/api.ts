@@ -13,9 +13,7 @@ type PaidInvoiceRow = {
 
 export type BuildingInvoiceStat = {
   building: string | null;
-  total_invoices: number;
   paid_invoices: number;
-  unpaid_invoices: number;
 };
 
 async function apiFetch(input: RequestInfo | URL, init?: RequestInit) {
@@ -854,11 +852,19 @@ export async function superadminDownloadPaidInvoicesPdf(
 
 
 // function
-export async function treasurerGetBuildingInvoiceStats(token: string | null) {
+export async function treasurerGetBuildingInvoiceStats(
+  token: string | null,
+  params?: { year?: number; month?: number }
+) {
   if (!token) throw new Error("لا يوجد توكن");
 
+  const query: string[] = [];
+  if (params?.year) query.push(`year=${params.year}`);
+  if (params?.month) query.push(`month=${params.month}`);
+  const qs = query.length ? `?${query.join("&")}` : "";
+
   const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE}/treasurer/buildings/invoices-stats`,
+    `${process.env.NEXT_PUBLIC_API_BASE}/treasurer/buildings/invoices-stats${qs}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
