@@ -11,6 +11,13 @@ type PaidInvoiceRow = {
   payment_type: "CASH" | "ONLINE"; // ONLINE = Instapay
 };
 
+export type BuildingInvoiceStat = {
+  building: string | null;
+  total_invoices: number;
+  paid_invoices: number;
+  unpaid_invoices: number;
+};
+
 async function apiFetch(input: RequestInfo | URL, init?: RequestInit) {
   startRequest();
   try {
@@ -844,3 +851,31 @@ export async function superadminDownloadPaidInvoicesPdf(
 
   return res.json(); // ده هيبقى Array في العادي
 }
+
+
+// function
+export async function treasurerGetBuildingInvoiceStats(token: string | null) {
+  if (!token) throw new Error("لا يوجد توكن");
+
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_BASE}/treasurer/buildings/invoices-stats`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    let data: any = null;
+    try {
+      data = await res.json();
+    } catch {
+      // ignore
+    }
+    throw new Error(data?.message || "تعذر تحميل إحصائيات العمارات");
+  }
+
+  return res.json() as Promise<BuildingInvoiceStat[]>;
+}
+

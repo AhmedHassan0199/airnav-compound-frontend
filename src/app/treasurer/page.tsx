@@ -4,6 +4,7 @@ import DashboardHeader from "@/components/DashboardHeader";
 import { formatDateTime } from "@/lib/dateFormat";
 import { useEffect, useMemo, useState } from "react";
 import { useRequireAuth } from "@/lib/auth";
+import type { BuildingInvoiceStat } from "@/lib/api";
 import {
   treasurerGetAdmins,
   treasurerGetAdminDetails,
@@ -14,6 +15,7 @@ import {
   treasurerGetLedger,
   treasurerGetLateResidents,
   treasurerNotifyLateResidents,
+  treasurerGetBuildingInvoiceStats,
 } from "@/lib/api";
 
 type AdminSummary = {
@@ -154,6 +156,12 @@ export default function TreasurerPage() {
 
   const [activeTab, setActiveTab] = useState<TabType>("SETTLEMENT");
 
+  // Buildings Stats
+  const [buildingStats, setBuildingStats] = useState<BuildingInvoiceStat[]>([]);
+  const [buildingStatsLoading, setBuildingStatsLoading] = useState(false);
+  const [buildingStatsError, setBuildingStatsError] = useState<string | null>(null);
+  const [buildingStatsLoadedOnce, setBuildingStatsLoadedOnce] = useState(false);
+
   // Load initial data
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -171,6 +179,23 @@ export default function TreasurerPage() {
       setSummary(data);
     } catch {
       // ignore small errors
+    }
+  }
+
+  async function loadBuildingStats() {
+    try {
+      setBuildingStatsError(null);
+      setBuildingStatsLoading(true);
+      const token = localStorage.getItem("access_token");
+      const data = await treasurerGetBuildingInvoiceStats(token);
+      setBuildingStats(data);
+      setBuildingStatsLoadedOnce(true);
+    } catch (err: any) {
+      setBuildingStatsError(
+        err.message || "تعذر تحميل إحصائيات عدد الفواتير لكل عمارة"
+      );
+    } finally {
+      setBuildingStatsLoading(false);
     }
   }
 
@@ -455,6 +480,28 @@ export default function TreasurerPage() {
     return { list, maxOverdue };
   }, [lateResidents]);
 
+  const buildingsRanking = useMemo(() => {
+    if (!buildingStats || buildingStats.length === 0) {
+      return { top5: [], bottom5: [], maxTotal: 0 };
+    }
+
+    // sort desc by total_invoices
+    const sorted = buildingStats
+      .slice()
+      .sort((a, b) => b.total_invoices - a.total_invoices);
+
+    const maxTotal = sorted[0]?.total_invoices || 0;
+
+    const top5 = sorted.slice(0, 5);
+
+    // أقل 5: من آخر الليست
+    const bottom5 = sorted
+      .slice(-5)          // آخر 5 عناصر
+      .reverse();        // نخلي الأقل في الأول
+
+    return { top5, bottom5, maxTotal };
+  }, [buildingStats]);
+
   const statsOverdueRate = useMemo(() => {
     if (!summary || !summary.total_invoices) return 0;
     const unpaid = summary.unpaid_invoices || 0;
@@ -638,7 +685,12 @@ export default function TreasurerPage() {
             السكان المتأخرين
           </button>
           <button
-            onClick={() => setActiveTab("STATS")}
+            onClick={async () => {
+              setActiveTab("STATS");
+              if (!buildingStatsLoadedOnce) {
+                await loadBuildingStats();
+              }
+            }}
             className={`px-3 py-2 rounded-lg ${
               activeTab === "STATS"
                 ? "bg-emerald-600 text-white"
@@ -1495,6 +1547,96 @@ export default function TreasurerPage() {
                 </div>
               )}
             </div>
+
+            {/* NEW: ترتيب العمارات حسب عدد الفواتير */}
+            <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-slate-800">
+                ترتيب العمارات حسب عدد الفواتير
+              </h3>
+
+              {buildingStatsLoading && (
+                <p className="text-sm text-slate-600">جارٍ تحميل بيانات العمارات...</p>
+              )}
+
+              {buildingStatsError && (
+                <p className="text-sm text-red-600">{buildingStatsError}</p>
+              )}
+
+              {!buildingStatsLoading &&
+                !buildingStatsError &&
+                buildingStats.length === 0 && (
+                  <p className="text-sm text-slate-600">
+                    لا توجد بيانات فواتير كافية لعرض ترتيب العمارات حتى الآن.
+                  </p>
+                )}
+
+              {!buildingStatsLoading &&
+                !buildingStatsError &&
+                buildingStats.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
+                    {/* Top 5 */}
+                    <div>
+                      <h4 className="font-semibold text-slate-800 mb-2">
+                        أعلى ٥ عمارات من حيث عدد الفواتير
+                      </h4>
+                      <div className="space-y-2">
+                        {buildingsRanking.top5.map((b) => {
+                          const widthPct =
+                            buildingsRanking.maxTotal > 0
+                              ? (b.total_invoices / buildingsRanking.maxTotal) * 100
+                              : 0;
+                          const label = b.building || "عمارة غير محددة";
+                          return (
+                            <div key={label} className="space-y-1">
+                              <div className="flex justify-between">
+                                <span>{label}</span>
+                                <span>{b.total_invoices} فاتورة</span>
+                              </div>
+                              <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-emerald-500"
+                                  style={{ width: `${Math.min(100, widthPct)}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Least 5 */}
+                    <div>
+                      <h4 className="font-semibold text-slate-800 mb-2">
+                        أقل ٥ عمارات من حيث عدد الفواتير
+                      </h4>
+                      <div className="space-y-2">
+                        {buildingsRanking.bottom5.map((b) => {
+                          const widthPct =
+                            buildingsRanking.maxTotal > 0
+                              ? (b.total_invoices / buildingsRanking.maxTotal) * 100
+                              : 0;
+                          const label = b.building || "عمارة غير محددة";
+                          return (
+                            <div key={label} className="space-y-1">
+                              <div className="flex justify-between">
+                                <span>{label}</span>
+                                <span>{b.total_invoices} فاتورة</span>
+                              </div>
+                              <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-sky-500"
+                                  style={{ width: `${Math.min(100, widthPct)}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+            </div>
+
           </div>
         )}
       </div>
