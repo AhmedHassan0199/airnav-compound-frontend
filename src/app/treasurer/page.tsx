@@ -194,11 +194,19 @@ export default function TreasurerPage() {
       const yearNum = buildingStatsYear ? parseInt(buildingStatsYear, 10) : undefined;
       const monthNum = buildingStatsMonth ? parseInt(buildingStatsMonth, 10) : undefined;
 
-      const data = await treasurerGetBuildingInvoiceStats(token, {
+      const resp = await treasurerGetBuildingInvoiceStats(token, {
         year: yearNum,
         month: monthNum,
       });
-      setBuildingStats(data);
+
+      // لو الـ API بيرجع { buildings: [...] }
+      const list: BuildingInvoiceStat[] = Array.isArray(resp)
+        ? resp
+        : Array.isArray((resp as any).buildings)
+        ? (resp as any).buildings
+        : [];
+
+      setBuildingStats(list);
       setBuildingStatsLoadedOnce(true);
     } catch (err: any) {
       setBuildingStatsError(
@@ -492,11 +500,13 @@ export default function TreasurerPage() {
   }, [lateResidents]);
 
   const buildingsRanking = useMemo(() => {
-    if (!buildingStats || buildingStats.length === 0) {
+    const base = Array.isArray(buildingStats) ? buildingStats : [];
+
+    if (base.length === 0) {
       return { top5: [], bottom5: [], maxPct: 0 };
     }
 
-    const sorted = buildingStats
+    const sorted = base
       .slice()
       .sort((a, b) => b.paid_percentage - a.paid_percentage);
 
