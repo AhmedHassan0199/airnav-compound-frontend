@@ -172,6 +172,11 @@ export default function TreasurerPage() {
   const [buildingAmountStatsError, setBuildingAmountStatsError] = useState<string | null>(null);
   const [buildingAmountLoadedOnce, setBuildingAmountLoadedOnce] = useState(false);
 
+  // Buildings Stats filters (percentage thresholds)
+  const [buildingCountFilterPct, setBuildingCountFilterPct] = useState<string>("");
+  const [buildingAmountFilterPct, setBuildingAmountFilterPct] = useState<string>("");
+
+
   // Load initial data
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1686,16 +1691,44 @@ export default function TreasurerPage() {
 
               {!buildingStatsLoading &&
                 !buildingStatsError &&
-                buildingStats.length === 0 && (
-                  <p className="text-sm text-slate-600">
-                    لا توجد بيانات كافية لعرض ترتيب العمارات في الفترة المحددة.
-                  </p>
-                )}
+                buildingStats.length > 0 && (
+                  <>
+                    {/* Filter controls for count-based % */}
+                    <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm mt-3 mb-2">
+                      <span className="text-slate-700">
+                        فلترة حسب النسبة:
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={200}
+                        step={1}
+                        className="border rounded-lg px-2 py-1 text-right w-28"
+                        placeholder="مثال: 70"
+                        value={buildingCountFilterPct}
+                        onChange={(e) => setBuildingCountFilterPct(e.target.value)}
+                      />
+                      <span className="text-slate-500">
+                        إظهار العمارات أقل من أو تساوي هذه النسبة %
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setBuildingCountFilterPct("")}
+                        className="px-2 py-1 rounded-lg bg-slate-100 text-slate-700"
+                      >
+                        إلغاء الفلتر
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBuildingCountFilterPct("70")}
+                        className="px-2 py-1 rounded-lg bg-orange-100 text-orange-800"
+                      >
+                        أقل من 70%
+                      </button>
+                    </div>
 
-                {!buildingStatsLoading &&
-                  !buildingStatsError &&
-                  buildingStats.length > 0 && (
-                    <div className="mt-3 max-h-[420px] overflow-y-auto rounded-lg border border-slate-200">
+                    {/* Table with ALL buildings (after filter) */}
+                    <div className="max-h-[420px] overflow-y-auto rounded-lg border border-slate-200">
                       <table className="w-full text-xs sm:text-sm text-right border-collapse">
                         <thead className="bg-slate-50">
                           <tr className="border-b">
@@ -1707,37 +1740,143 @@ export default function TreasurerPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {buildingsRanking.all.map((b, idx) => {
-                            const label = b.building || "عمارة غير محددة";
-                            const pct = b.paid_percentage ?? 0;
-                            // bar based on 0–100%
-                            const widthPct = Math.min(100, Math.max(0, pct));
+                          {(() => {
+                            const threshold = parseFloat(buildingCountFilterPct);
+                            const rows =
+                              !isNaN(threshold)
+                                ? buildingsRanking.all.filter(
+                                    (b) => (b.paid_percentage ?? 0) <= threshold
+                                  )
+                                : buildingsRanking.all;
 
-                            return (
-                              <tr key={label} className="border-b last:border-0">
-                                <td className="py-1.5 px-2">{idx + 1}</td>
-                                <td className="py-1.5 px-2">{label}</td>
-                                <td className="py-1.5 px-2">
-                                  {b.paid_invoices}/{b.total_apartments}
-                                </td>
-                                <td className="py-1.5 px-2 font-semibold">
-                                  {pct.toFixed(1)}%
-                                </td>
-                                <td className="py-1.5 px-2">
-                                  <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                                    <div
-                                      className="h-full bg-emerald-500"
-                                      style={{ width: `${widthPct}%` }}
-                                    />
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
+                            return rows.map((b, idx) => {
+                              const label = b.building || "عمارة غير محددة";
+                              const pct = b.paid_percentage ?? 0;
+                              const widthPct = Math.min(100, Math.max(0, pct));
+
+                              return (
+                                <tr key={label} className="border-b last:border-0">
+                                  <td className="py-1.5 px-2">{idx + 1}</td>
+                                  <td className="py-1.5 px-2">{label}</td>
+                                  <td className="py-1.5 px-2">
+                                    {b.paid_invoices}/{b.total_apartments}
+                                  </td>
+                                  <td className="py-1.5 px-2 font-semibold">
+                                    {pct.toFixed(1)}%
+                                  </td>
+                                  <td className="py-1.5 px-2">
+                                    <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                                      <div
+                                        className="h-full bg-emerald-500"
+                                        style={{ width: `${widthPct}%` }}
+                                      />
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            });
+                          })()}
                         </tbody>
                       </table>
                     </div>
-                  )}
+                  </>
+                )}
+
+
+              {!buildingAmountStatsLoading &&
+                !buildingAmountStatsError &&
+                buildingAmountStats.length > 0 && (
+                  <>
+                    {/* Filter controls for amount-based % */}
+                    <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm mt-3 mb-2">
+                      <span className="text-slate-700">
+                        فلترة حسب النسبة:
+                      </span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={200}
+                        step={1}
+                        className="border rounded-lg px-2 py-1 text-right w-28"
+                        placeholder="مثال: 70"
+                        value={buildingAmountFilterPct}
+                        onChange={(e) => setBuildingAmountFilterPct(e.target.value)}
+                      />
+                      <span className="text-slate-500">
+                        إظهار العمارات أقل من أو تساوي هذه النسبة %
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setBuildingAmountFilterPct("")}
+                        className="px-2 py-1 rounded-lg bg-slate-100 text-slate-700"
+                      >
+                        إلغاء الفلتر
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBuildingAmountFilterPct("70")}
+                        className="px-2 py-1 rounded-lg bg-orange-100 text-orange-800"
+                      >
+                        أقل من 70%
+                      </button>
+                    </div>
+
+                    {/* Table with ALL buildings (after filter) */}
+                    <div className="max-h-[420px] overflow-y-auto rounded-lg border border-slate-200">
+                      <table className="w-full text-xs sm:text-sm text-right border-collapse">
+                        <thead className="bg-slate-50">
+                          <tr className="border-b">
+                            <th className="py-2 px-2">#</th>
+                            <th className="py-2 px-2">العمارة</th>
+                            <th className="py-2 px-2">المحصَّل / المتوقع (جنيه)</th>
+                            <th className="py-2 px-2">نسبة التحصيل</th>
+                            <th className="py-2 px-2">تمثيل بصري</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(() => {
+                            const threshold = parseFloat(buildingAmountFilterPct);
+                            const rows =
+                              !isNaN(threshold)
+                                ? buildingsAmountRanking.all.filter(
+                                    (b) => (b.paid_percentage ?? 0) <= threshold
+                                  )
+                                : buildingsAmountRanking.all;
+
+                            return rows.map((b, idx) => {
+                              const label = b.building || "عمارة غير محددة";
+                              const pct = b.paid_percentage ?? 0;
+                              const widthPct = Math.min(100, Math.max(0, pct));
+
+                              return (
+                                <tr key={label} className="border-b last:border-0">
+                                  <td className="py-1.5 px-2">{idx + 1}</td>
+                                  <td className="py-1.5 px-2">{label}</td>
+                                  <td className="py-1.5 px-2">
+                                    {b.paid_amount.toFixed(0)}/
+                                    {b.expected_amount.toFixed(0)} جنيه
+                                  </td>
+                                  <td className="py-1.5 px-2 font-semibold">
+                                    {pct.toFixed(1)}%
+                                  </td>
+                                  <td className="py-1.5 px-2">
+                                    <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                                      <div
+                                        className="h-full bg-emerald-500"
+                                        style={{ width: `${widthPct}%` }}
+                                      />
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            });
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+
             </div>
 
             {/* NEW: ترتيب العمارات حسب نسبة التحصيل بالمبالغ (جنيه) */}
