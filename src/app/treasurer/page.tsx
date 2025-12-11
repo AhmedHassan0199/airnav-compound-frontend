@@ -545,37 +545,34 @@ export default function TreasurerPage() {
   }, [lateResidents]);
 
   const buildingsRanking = useMemo(() => {
-    const base = Array.isArray(buildingStats) ? buildingStats : [];
+  const base = Array.isArray(buildingStats) ? buildingStats : [];
 
-    if (base.length === 0) {
-      return { top5: [], bottom5: [], maxPct: 0 };
-    }
+  if (base.length === 0) {
+    return { all: [], maxPct: 0 };
+  }
 
-    const sorted = base
-      .slice()
-      .sort((a, b) => b.paid_percentage - a.paid_percentage);
+  const sorted = base
+    .slice()
+    .sort((a, b) => b.paid_percentage - a.paid_percentage);
 
-    const maxPct = sorted[0]?.paid_percentage || 0;
+  const maxPct = sorted[0]?.paid_percentage || 0;
 
-    const top5 = sorted.slice(0, 5);
-    const bottom5 = sorted.slice(-5).reverse(); // أقل ٥ نسب تحصيل
-
-    return { top5, bottom5, maxPct };
-  }, [buildingStats]);
+  return { all: sorted, maxPct };
+}, [buildingStats]);
 
   const buildingsAmountRanking = useMemo(() => {
-    if (!buildingAmountStats || buildingAmountStats.length === 0) {
-      return { top5: [], bottom5: [] };
-    }
-    const sorted = buildingAmountStats
-      .slice()
-      .sort((a, b) => b.paid_percentage - a.paid_percentage);
+  if (!buildingAmountStats || buildingAmountStats.length === 0) {
+    return { all: [], maxPct: 0 };
+  }
 
-    const top5 = sorted.slice(0, 5);
-    const bottom5 = sorted.slice(-5).reverse();
+  const sorted = buildingAmountStats
+    .slice()
+    .sort((a, b) => b.paid_percentage - a.paid_percentage);
 
-    return { top5, bottom5 };
-  }, [buildingAmountStats]);
+  const maxPct = sorted[0]?.paid_percentage || 0;
+
+  return { all: sorted, maxPct };
+}, [buildingAmountStats]);
 
   const statsOverdueRate = useMemo(() => {
     if (!summary || !summary.total_invoices) return 0;
@@ -1695,82 +1692,52 @@ export default function TreasurerPage() {
                   </p>
                 )}
 
-              {!buildingStatsLoading &&
-                !buildingStatsError &&
-                buildingStats.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
-                    {/* Top 5 */}
-                    <div>
-                      <h4 className="font-semibold text-slate-800 mb-2">
-                        أعلى ٥ عمارات من حيث نسبة التحصيل
-                      </h4>
-                      <div className="space-y-2">
-                        {buildingsRanking.top5.map((b) => {
-                          const label = b.building || "عمارة غير محددة";
-                          const pct = b.paid_percentage ?? 0;
+                {!buildingStatsLoading &&
+                  !buildingStatsError &&
+                  buildingStats.length > 0 && (
+                    <div className="mt-3 max-h-[420px] overflow-y-auto rounded-lg border border-slate-200">
+                      <table className="w-full text-xs sm:text-sm text-right border-collapse">
+                        <thead className="bg-slate-50">
+                          <tr className="border-b">
+                            <th className="py-2 px-2">#</th>
+                            <th className="py-2 px-2">العمارة</th>
+                            <th className="py-2 px-2">الفواتير المسددة / الشقق</th>
+                            <th className="py-2 px-2">نسبة التحصيل</th>
+                            <th className="py-2 px-2">تمثيل بصري</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {buildingsRanking.all.map((b, idx) => {
+                            const label = b.building || "عمارة غير محددة";
+                            const pct = b.paid_percentage ?? 0;
+                            // bar based on 0–100%
+                            const widthPct = Math.min(100, Math.max(0, pct));
 
-                          // كل bar على أساس نسبته من 100%
-                          const widthPct = Math.min(100, Math.max(0, pct));
-
-                          return (
-                            <div key={label} className="space-y-1">
-                              <div className="flex justify-between">
-                                <span>{label}</span>
-                                <span>
-                                  {pct.toFixed(1)}%{" "}
-                                  <span className="text-slate-500">
-                                    ({b.paid_invoices}/{b.total_apartments})
-                                  </span>
-                                </span>
-                              </div>
-                              <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-emerald-500"
-                                  style={{ width: `${widthPct}%` }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                            return (
+                              <tr key={label} className="border-b last:border-0">
+                                <td className="py-1.5 px-2">{idx + 1}</td>
+                                <td className="py-1.5 px-2">{label}</td>
+                                <td className="py-1.5 px-2">
+                                  {b.paid_invoices}/{b.total_apartments}
+                                </td>
+                                <td className="py-1.5 px-2 font-semibold">
+                                  {pct.toFixed(1)}%
+                                </td>
+                                <td className="py-1.5 px-2">
+                                  <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-emerald-500"
+                                      style={{ width: `${widthPct}%` }}
+                                    />
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-
-                    {/* Least 5 */}
-                    <div>
-                      <h4 className="font-semibold text-slate-800 mb-2">
-                        أقل ٥ عمارات من حيث نسبة التحصيل
-                      </h4>
-                      <div className="space-y-2">
-                        {buildingsRanking.bottom5.map((b) => {
-                          const label = b.building || "عمارة غير محددة";
-                          const pct = b.paid_percentage ?? 0;
-
-                          const widthPct = Math.min(100, Math.max(0, pct));
-
-                          return (
-                            <div key={label} className="space-y-1">
-                              <div className="flex justify-between">
-                                <span>{label}</span>
-                                <span>
-                                  {pct.toFixed(1)}%{" "}
-                                  <span className="text-slate-500">
-                                    ({b.paid_invoices}/{b.total_apartments})
-                                  </span>
-                                </span>
-                              </div>
-                              <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-sky-500"
-                                  style={{ width: `${widthPct}%` }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
+                  )}
             </div>
 
             {/* NEW: ترتيب العمارات حسب نسبة التحصيل بالمبالغ (جنيه) */}
@@ -1804,78 +1771,49 @@ export default function TreasurerPage() {
               {!buildingAmountStatsLoading &&
                 !buildingAmountStatsError &&
                 buildingAmountStats.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
-                    {/* Top 5 by amount */}
-                    <div>
-                      <h4 className="font-semibold text-slate-800 mb-2">
-                        أعلى ٥ عمارات من حيث نسبة التحصيل بالمبالغ
-                      </h4>
-                      <div className="space-y-2">
-                        {buildingsAmountRanking.top5.map((b) => {
+                  <div className="mt-3 max-h-[420px] overflow-y-auto rounded-lg border border-slate-200">
+                    <table className="w-full text-xs sm:text-sm text-right border-collapse">
+                      <thead className="bg-slate-50">
+                        <tr className="border-b">
+                          <th className="py-2 px-2">#</th>
+                          <th className="py-2 px-2">العمارة</th>
+                          <th className="py-2 px-2">المحصَّل / المتوقع (جنيه)</th>
+                          <th className="py-2 px-2">نسبة التحصيل</th>
+                          <th className="py-2 px-2">تمثيل بصري</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {buildingsAmountRanking.all.map((b, idx) => {
                           const label = b.building || "عمارة غير محددة";
                           const pct = b.paid_percentage ?? 0;
                           const widthPct = Math.min(100, Math.max(0, pct));
 
                           return (
-                            <div key={label} className="space-y-1">
-                              <div className="flex justify-between">
-                                <span>{label}</span>
-                                <span>
-                                  {pct.toFixed(1)}%{" "}
-                                  <span className="text-slate-500">
-                                    ({b.paid_amount.toFixed(0)}/
-                                    {b.expected_amount.toFixed(0)} جنيه)
-                                  </span>
-                                </span>
-                              </div>
-                              <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-emerald-500"
-                                  style={{ width: `${widthPct}%` }}
-                                />
-                              </div>
-                            </div>
+                            <tr key={label} className="border-b last:border-0">
+                              <td className="py-1.5 px-2">{idx + 1}</td>
+                              <td className="py-1.5 px-2">{label}</td>
+                              <td className="py-1.5 px-2">
+                                {b.paid_amount.toFixed(0)}/{b.expected_amount.toFixed(0)} جنيه
+                              </td>
+                              <td className="py-1.5 px-2 font-semibold">
+                                {pct.toFixed(1)}%
+                              </td>
+                              <td className="py-1.5 px-2">
+                                <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-emerald-500"
+                                    style={{ width: `${widthPct}%` }}
+                                  />
+                                </div>
+                              </td>
+                            </tr>
                           );
                         })}
-                      </div>
-                    </div>
-
-                    {/* Bottom 5 by amount */}
-                    <div>
-                      <h4 className="font-semibold text-slate-800 mb-2">
-                        أقل ٥ عمارات من حيث نسبة التحصيل بالمبالغ
-                      </h4>
-                      <div className="space-y-2">
-                        {buildingsAmountRanking.bottom5.map((b) => {
-                          const label = b.building || "عمارة غير محددة";
-                          const pct = b.paid_percentage ?? 0;
-                          const widthPct = Math.min(100, Math.max(0, pct));
-
-                          return (
-                            <div key={label} className="space-y-1">
-                              <div className="flex justify-between">
-                                <span>{label}</span>
-                                <span>
-                                  {pct.toFixed(1)}%{" "}
-                                  <span className="text-slate-500">
-                                    ({b.paid_amount.toFixed(0)}/
-                                    {b.expected_amount.toFixed(0)} جنيه)
-                                  </span>
-                                </span>
-                              </div>
-                              <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-sky-500"
-                                  style={{ width: `${widthPct}%` }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+                      </tbody>
+                    </table>
                   </div>
                 )}
+
             </div>
 
           </div>
