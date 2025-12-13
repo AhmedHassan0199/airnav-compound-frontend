@@ -996,3 +996,24 @@ export async function treasurerGetBuildingUnitsStatus(
   return res.json();
 }
 
+export async function publicGetBuildingUnitsStatus(
+  params: { building: string; year?: number; month?: number }
+): Promise<BuildingUnitsStatusResponse> {
+  const query: string[] = [];
+  if (params.year) query.push(`year=${params.year}`);
+  if (params.month) query.push(`month=${params.month}`);
+  const qs = query.length ? `?${query.join("&")}` : "";
+
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_BASE}/public/buildings/${encodeURIComponent(
+      params.building
+    )}/units-status${qs}`
+  );
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "تعذر تحميل بيانات شقق العمارة");
+  }
+
+  return res.json();
+}
