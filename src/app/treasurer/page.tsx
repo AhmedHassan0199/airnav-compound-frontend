@@ -5,6 +5,7 @@ import { formatDateTime } from "@/lib/dateFormat";
 import { useEffect, useMemo, useState } from "react";
 import { useRequireAuth } from "@/lib/auth";
 import type { BuildingInvoiceStat, BuildingAmountStat } from "@/lib/api";
+import type { BuildingUnitStatusRow } from "@/lib/api";
 import {
   treasurerGetAdmins,
   treasurerGetAdminDetails,
@@ -17,6 +18,7 @@ import {
   treasurerNotifyLateResidents,
   treasurerGetBuildingInvoiceStats,
   treasurerGetBuildingAmountStats,
+  treasurerGetBuildingUnitsStatus
 } from "@/lib/api";
 
 type AdminSummary = {
@@ -176,6 +178,15 @@ export default function TreasurerPage() {
   const [buildingCountFilterPct, setBuildingCountFilterPct] = useState<string>("");
   const [buildingAmountFilterPct, setBuildingAmountFilterPct] = useState<string>("");
 
+  const [unitBuilding, setUnitBuilding] = useState("");
+  const [unitRows, setUnitRows] = useState<BuildingUnitStatusRow[]>([]);
+  const [unitLoading, setUnitLoading] = useState(false);
+  const [unitError, setUnitError] = useState<string | null>(null);
+
+  const [unitPaidFilter, setUnitPaidFilter] = useState<string>(""); // "", "PAID", "UNPAID"
+  const [unitMethodFilter, setUnitMethodFilter] = useState<string>(""); // "", "ONLINE", "CASH"
+  const [unitSearch, setUnitSearch] = useState<string>("");
+
 
   // Load initial data
   useEffect(() => {
@@ -318,6 +329,33 @@ export default function TreasurerPage() {
       setLateError(err.message || "تعذر تحميل قائمة السكان المتأخرين");
     } finally {
       setLateLoading(false);
+    }
+  }
+
+  async function loadBuildingUnits() {
+    if (!unitBuilding.trim()) {
+      setUnitError("اكتب رقم العمارة الأول");
+      return;
+    }
+    try {
+      setUnitError(null);
+      setUnitLoading(true);
+      const token = localStorage.getItem("access_token");
+
+      const yearNum = buildingStatsYear ? parseInt(buildingStatsYear, 10) : undefined;
+      const monthNum = buildingStatsMonth ? parseInt(buildingStatsMonth, 10) : undefined;
+
+      const data = await treasurerGetBuildingUnitsStatus(token, {
+        building: unitBuilding.trim(),
+        year: yearNum,
+        month: monthNum,
+      });
+
+      setUnitRows(data.units || []);
+    } catch (err: any) {
+      setUnitError(err.message || "تعذر تحميل شقق العمارة");
+    } finally {
+      setUnitLoading(false);
     }
   }
 
@@ -584,6 +622,24 @@ export default function TreasurerPage() {
     const unpaid = summary.unpaid_invoices || 0;
     return (unpaid / summary.total_invoices) * 100;
   }, [summary]);
+
+  const filteredUnitRows = useMemo(() => {
+    const q = unitSearch.trim().toLowerCase();
+
+    return unitRows.filter(r => {
+      if (unitPaidFilter === "PAID" && !r.paid_current_month) return false;
+      if (unitPaidFilter === "UNPAID" && r.paid_current_month) return false;
+
+      if (unitMethodFilter && (r.payment_method || "") !== unitMethodFilter) return false;
+
+      if (q) {
+        const blob = `${r.full_name} ${r.floor ?? ""} ${r.apartment ?? ""}`.toLowerCase();
+        if (!blob.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [unitRows, unitPaidFilter, unitMethodFilter, unitSearch]);
+
 
   function buildWhatsAppLink(resident: LateResident) {
     if (!resident.phone) return "#";
@@ -1953,6 +2009,105 @@ export default function TreasurerPage() {
                   </div>
                 )}
 
+            </div>
+
+            {/* NEW:Building Details */}
+            <div className="bg-white rounded-xl shadow-sm p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-slate-800">
+                تفاصيل شقق عمارة معينة (الشهر الحالي)
+              </h3>
+
+              <div className="flex flex-wrap gap-2 items-end">
+                <div>
+                  <div className="text-xs text-slate-600 mb-1">رقم العمارة</div>
+                  <input
+                    className="border rounded-lg px-3 py-2 text-right w-40"
+                    placeholder="مثال: 12"
+                    value={unitBuilding}
+                    onChange={(e) => setUnitBuilding(e.target.value)}
+                  />
+                </div>
+
+                <button
+                  onClick={loadBuildingUnits}
+                  className="px-3 py-2 rounded-lg bg-slate-800 text-white text-sm"
+                  disabled={unitLoading}
+                >
+                  {unitLoading ? "تحميل..." : "عرض الشقق"}
+                </button>
+
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    className="border rounded-lg px-2 py-2 text-right w-52"
+                    placeholder="بحث بالاسم / الدور / الشقة"
+                    value={unitSearch}
+                    onChange={(e) => setUnitSearch(e.target.value)}
+                  />
+
+                  <select
+                    className="border rounded-lg px-2 py-2 text-right"
+                    value={unitPaidFilter}
+                    onChange={(e) => setUnitPaidFilter(e.target.value)}
+                  >
+                    <option value="">كل الحالات</option>
+                    <option value="PAID">مدفوع</option>
+                    <option value="UNPAID">غير مدفوع</option>
+                  </select>
+
+                  <select
+                    className="border rounded-lg px-2 py-2 text-right"
+                    value={unitMethodFilter}
+                    onChange={(e) => setUnitMethodFilter(e.target.value)}
+                  >
+                    <option value="">كل الطرق</option>
+                    <option value="ONLINE">ONLINE</option>
+                    <option value="CASH">CASH</option>
+                  </select>
+                </div>
+              </div>
+
+              {unitError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
+                  {unitError}
+                </div>
+              )}
+
+              <div className="max-h-[60vh] overflow-y-auto pr-1">
+                <table className="w-full text-right border-collapse text-xs sm:text-sm">
+                  <thead>
+                    <tr className="border-b text-slate-600">
+                      <th className="py-2">الاسم</th>
+                      <th className="py-2">الدور</th>
+                      <th className="py-2">الشقة</th>
+                      <th className="py-2">الحالة</th>
+                      <th className="py-2">المبلغ المدفوع</th>
+                      <th className="py-2">طريقة الدفع</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUnitRows.map((r) => (
+                      <tr key={r.user_id} className="border-b last:border-0">
+                        <td className="py-2">{r.full_name}</td>
+                        <td className="py-2">{r.floor ?? "-"}</td>
+                        <td className="py-2">{r.apartment ?? "-"}</td>
+                        <td className="py-2">
+                          {r.paid_current_month ? (
+                            <span className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px]">
+                              مدفوع
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 rounded-full bg-red-100 text-red-800 text-[11px]">
+                              غير مدفوع
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2">{(r.paid_amount ?? 0).toFixed(2)}</td>
+                        <td className="py-2">{r.payment_method ?? "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
           </div>

@@ -1,6 +1,32 @@
 // src/lib/api.ts
 import { startRequest, endRequest } from "@/lib/loaderManager";
 
+export type BuildingUnitStatusRow = {
+  user_id: number;
+  full_name: string;
+  building: string | null;
+  floor: string | null;
+  apartment: string | null;
+
+  year: number;
+  month: number;
+
+  invoice_id: number | null;
+  invoice_amount: number;
+  paid_current_month: boolean;
+
+  paid_amount: number;
+  payment_method: "ONLINE" | "CASH" | null;
+};
+
+export type BuildingUnitsStatusResponse = {
+  building: string;
+  year: number;
+  month: number;
+  units: BuildingUnitStatusRow[];
+};
+
+
 type PaidInvoiceRow = {
   invoice_id: number;
   resident_name: string;
@@ -941,3 +967,32 @@ export async function treasurerGetBuildingAmountStats(
     bottom5: (data.bottom5 ?? []).map(mapOne),
   };
 }
+
+export async function treasurerGetBuildingUnitsStatus(
+  token: string | null,
+  params: { building: string; year?: number; month?: number }
+): Promise<BuildingUnitsStatusResponse> {
+  if (!token) throw new Error("Not authenticated");
+
+  const query: string[] = [];
+  if (params.year) query.push(`year=${params.year}`);
+  if (params.month) query.push(`month=${params.month}`);
+  const qs = query.length ? `?${query.join("&")}` : "";
+
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_BASE}/treasurer/buildings/${encodeURIComponent(
+      params.building
+    )}/units-status${qs}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "تعذر تحميل بيانات شقق العمارة");
+  }
+
+  return res.json();
+}
+
