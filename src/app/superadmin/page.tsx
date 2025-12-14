@@ -87,6 +87,13 @@ export default function SuperadminHomePage() {
           >
             ٦- لوحة الشرف (Fund Raising)
           </button>
+          {/* ⭐ 7 – إدارة لوحة الشرف (تعديل) */}
+          <button
+            onClick={() => router.push("/superadmin/honor-board/manage")}
+            className="w-full px-4 py-3 bg-white border border-brand-cyan text-brand-cyan rounded-lg text-sm font-semibold hover:bg-[#E0F5F7] transition-colors"
+          >
+            ٧- إدارة لوحة الشرف (تعديل الاسم/المبلغ)
+          </button>
         </div>
       </div>
     </main>

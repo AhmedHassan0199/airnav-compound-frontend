@@ -1050,6 +1050,29 @@ export async function superadminCreateFundraiser(
   return res.json();
 }
 
+export async function superadminUpdateFundraiser(
+  token: string | null,
+  fundraiserId: number,
+  payload: { name: string; amount?: number }
+): Promise<FundRaiserRow> {
+  const res = await fetch(
+    `${process.env.API_BASE}/admin/superadmin/fundraisers/${fundraiserId}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to update fundraiser");
+  }
+
+  return res.json();
+}
 
 export async function superadminGetFundraisers(
   token: string | null,
