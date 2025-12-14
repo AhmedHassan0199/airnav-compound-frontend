@@ -43,7 +43,7 @@ export default function HonorBoardPage() {
           <div>
             <h1 className="text-xl font-bold text-slate-800">لوحة الشرف</h1>
             <p className="text-sm text-slate-600">
-              قائمة المساهمين لدعم الاتحاد (حسب الشهر).
+              قائمة المساهمين لدعم الاتحاد 
             </p>
           </div>
 
