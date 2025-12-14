@@ -26,6 +26,14 @@ export type BuildingUnitsStatusResponse = {
   units: BuildingUnitStatusRow[];
 };
 
+export type FundRaiserRow = {
+  id: number;
+  name: string;
+  amount: number;
+  year: number;
+  month: number;
+  created_at?: string;
+};
 
 type PaidInvoiceRow = {
   invoice_id: number;
@@ -1017,3 +1025,76 @@ export async function publicGetBuildingUnitsStatus(
 
   return res.json();
 }
+
+export async function superadminCreateFundraiser(
+  token: string | null,
+  payload: { name: string; amount: number; year: number; month: number }
+) {
+  const res = await fetch(
+    `${API_BASE}/admin/superadmin/fundraisers`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to create fundraiser");
+  }
+
+  return res.json();
+}
+
+
+export async function superadminGetFundraisers(
+  token: string | null,
+  params?: { year?: number; month?: number }
+): Promise<FundRaiserRow[]> {
+  const query: string[] = [];
+  if (params?.year) query.push(`year=${params.year}`);
+  if (params?.month) query.push(`month=${params.month}`);
+  const qs = query.length ? `?${query.join("&")}` : "";
+
+  const res = await fetch(
+    `${API_BASE}/admin/superadmin/fundraisers${qs}`,
+    {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to load fundraisers");
+  }
+
+  return res.json();
+}
+
+export async function publicGetFundraisers(
+  params?: { year?: number; month?: number }
+): Promise<FundRaiserRow[]> {
+  const query: string[] = [];
+  if (params?.year) query.push(`year=${params.year}`);
+  if (params?.month) query.push(`month=${params.month}`);
+  const qs = query.length ? `?${query.join("&")}` : "";
+
+  const res = await fetch(
+    `${API_BASE}/public/fundraisers${qs}`
+  );
+
+  if (!res.ok) {
+    throw new Error("Failed to load fundraisers");
+  }
+
+  return res.json();
+}
+
+
+

@@ -80,7 +80,13 @@ export default function SuperadminHomePage() {
           >
             ٥- تعديل حالة فواتير ساكن
           </button>
-
+          {/* ⭐ 6 – لوحة الشرف (Fund Raising) */}
+          <button
+            onClick={() => router.push("/superadmin/honor-board")}
+            className="w-full px-4 py-3 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors"
+          >
+            ٦- لوحة الشرف (Fund Raising)
+          </button>
         </div>
       </div>
     </main>
