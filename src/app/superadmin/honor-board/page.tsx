@@ -70,6 +70,10 @@ export default function SuperadminHonorBoardPage() {
     return arr;
   }, [now]);
 
+  const orderedRows = useMemo(() => {
+    return [...rows].sort((a, b) => b.id - a.id);
+    }, [rows]);
+
   async function loadFundraisers() {
     try {
       setLoading(true);
@@ -354,10 +358,7 @@ export default function SuperadminHonorBoardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows
-                    .slice()        // عشان ما نعدّليش الـ state الأصلي
-                    .reverse()      // يعكس الترتيب
-                    .map((r, idx) => (
+                  {orderedRows.map((r, idx) => (
                     <tr key={r.id} className="border-b last:border-0">
                       <td className="py-2 px-2">{idx + 1}</td>
                       <td className="py-2 px-2 font-semibold text-slate-800">
