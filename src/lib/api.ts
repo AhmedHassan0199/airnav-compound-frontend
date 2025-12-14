@@ -1056,7 +1056,7 @@ export async function superadminUpdateFundraiser(
   payload: { name: string; amount?: number }
 ): Promise<FundRaiserRow> {
   const res = await fetch(
-    `${process.env.API_BASE}/admin/superadmin/fundraisers/${fundraiserId}`,
+    `${API_BASE}/admin/superadmin/fundraisers/${fundraiserId}`,
     {
       method: "PUT",
       headers: {
