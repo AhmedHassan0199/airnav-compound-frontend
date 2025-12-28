@@ -6,6 +6,7 @@ import {
   publicCreateElectionTransportBooking,
   type ElectionTransportBookingPayload,
 } from "@/lib/api";
+import Image from "next/image";
 
 const STATIONS: ElectionTransportBookingPayload["station"][] = [
   "مدينة الملاحة الجوية",
@@ -92,10 +93,17 @@ export default function ElectionTransportBookingPage() {
             </p>
           </div>
 
-          {/* Bus image / svg placeholder */}
-          <div className="w-full md:w-64 h-32 rounded-lg border border-dashed border-slate-300 bg-slate-50 flex items-center justify-center text-slate-500 text-sm">
-            مكان صورة/أيقونة الأتوبيس
-          </div>
+            {/* Bus image */}
+            <div className="w-full md:w-64 h-32 rounded-lg border border-slate-200 bg-white flex items-center justify-center overflow-hidden">
+            <Image
+                src="/images/bus.jpg"
+                alt="أتوبيس نقل الناخبين"
+                width={256}
+                height={128}
+                className="object-contain"
+                priority
+            />
+            </div>
         </div>
 
         {/* Alerts */}
