@@ -1119,5 +1119,31 @@ export async function publicGetFundraisers(
   return res.json();
 }
 
+export type ElectionTransportBookingPayload = {
+  name: string;
+  phone: string;
+  seats: number;
+  station: "مدينة الملاحة الجوية" | "شيراتون" | "مدينة نصر";
+};
 
+export async function publicCreateElectionTransportBooking(
+  payload: ElectionTransportBookingPayload
+): Promise<{ id: number }> {
+  const res = await fetch(`${API_BASE}/public/election-transport-bookings`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 
+  if (res.status === 409) {
+    const j = await res.json().catch(() => null);
+    throw new Error(j?.message || "تم استخدام رقم الموبايل ده بالفعل.");
+  }
+
+  if (!res.ok) {
+    const j = await res.json().catch(() => null);
+    throw new Error(j?.message || "تعذر تسجيل الحجز.");
+  }
+
+  return res.json();
+}
