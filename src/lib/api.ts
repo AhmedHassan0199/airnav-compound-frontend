@@ -1154,7 +1154,7 @@ export type ElectionReservationRow = {
   phone: string;
   chairs: number;
   station: "مدينة الملاحة الجوية" | "شيراتون" | "مدينة نصر";
-  created_at?: string;
+  created_at: string;
 };
 
 export async function publicGetElectionReservations(): Promise<ElectionReservationRow[]> {

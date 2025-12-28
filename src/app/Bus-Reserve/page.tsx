@@ -58,7 +58,7 @@ export default function ElectionTransportBookingPage() {
         station,
       });
 
-      setSuccessMsg("تم تسجيل الحجز بنجاح ✅ هنكلمك لتأكيد التفاصيل.");
+      setSuccessMsg("تم تسجيل الحجز بنجاح ✅.");
       setName("");
       setPhone("");
       setSeats("1");
