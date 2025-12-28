@@ -72,8 +72,6 @@ export default function ElectionTransportBookingPage() {
 
   return (
     <main className="min-h-screen bg-brand-beige p-4" dir="rtl">
-      <DashboardHeader title="حجز انتقالات الانتخابات" />
-
       <div className="max-w-3xl mx-auto space-y-4">
         {/* Intro + Bus placeholder */}
         <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
