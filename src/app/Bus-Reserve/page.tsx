@@ -79,6 +79,9 @@ export default function ElectionTransportBookingPage() {
             <h1 className="text-xl font-bold text-slate-800">
               حجز انتقالات لانتخابات جمعية إسكان الملاحة الجوية
             </h1>
+            <div className="mt-2 rounded-lg border border-green-400 bg-green-100 px-4 py-2 text-sm font-bold text-green-900">
+            🚍 الانتقالات مجانية بالكامل ذهاب وعودة
+            </div>
             <p className="text-sm text-slate-600 mt-1">
               من فضلك سجّل بياناتك لحجز مكان في الأتوبيس.{" "}
               <span className="font-semibold text-slate-700">

@@ -1147,3 +1147,24 @@ export async function publicCreateElectionTransportBooking(
 
   return res.json();
 }
+
+export type ElectionReservationRow = {
+  id: number;
+  name: string;
+  phone: string;
+  chairs: number;
+  station: "مدينة الملاحة الجوية" | "شيراتون" | "مدينة نصر";
+  created_at?: string;
+};
+
+export async function publicGetElectionReservations(): Promise<ElectionReservationRow[]> {
+  const res = await fetch(`${API_BASE}/public/election-reservations`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to load reservations");
+  }
+
+  return res.json();
+}
