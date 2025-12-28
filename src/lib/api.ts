@@ -1158,7 +1158,7 @@ export type ElectionReservationRow = {
 };
 
 export async function publicGetElectionReservations(): Promise<ElectionReservationRow[]> {
-  const res = await fetch(`${API_BASE}/public/election-reservations`, {
+  const res = await fetch(`${API_BASE}/public/election-transport-bookings`, {
     cache: "no-store",
   });
 
