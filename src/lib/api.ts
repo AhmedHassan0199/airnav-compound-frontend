@@ -1168,3 +1168,43 @@ export async function publicGetElectionReservations(): Promise<ElectionReservati
 
   return res.json();
 }
+
+export async function treasurerCreateIncome(
+  token: string | null,
+  payload: { amount: number; description: string; category?: string }
+) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await apiFetch(`${API_BASE}/treasurer/incomes`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to record income");
+  }
+
+  return res.json();
+}
+
+export async function treasurerGetIncomes(token: string | null) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await apiFetch(`${API_BASE}/treasurer/incomes`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to load incomes");
+  }
+
+  return res.json();
+}

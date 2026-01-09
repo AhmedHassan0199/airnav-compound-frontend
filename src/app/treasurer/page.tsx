@@ -18,8 +18,12 @@ import {
   treasurerNotifyLateResidents,
   treasurerGetBuildingInvoiceStats,
   treasurerGetBuildingAmountStats,
-  treasurerGetBuildingUnitsStatus
+  treasurerGetBuildingUnitsStatus,
+  treasurerCreateIncome,
+  treasurerGetIncomes
 } from "@/lib/api";
+
+
 
 type AdminSummary = {
   total_amount: number;
@@ -113,7 +117,18 @@ type LateResidentsResponse = {
   late_residents: LateResident[];
 };
 
-type TabType = "SETTLEMENT" | "EXPENSES" | "LEDGER" | "LATE" | "STATS";
+type IncomeItem = {
+  id: number;
+  date: string;
+  amount: number;
+  category: string | null;
+  description: string;
+  created_by: string;
+};
+
+
+type TabType = "SETTLEMENT" | "EXPENSES" | "INCOME" | "LEDGER" | "LATE" | "STATS";
+
 
 export default function TreasurerPage() {
   useRequireAuth(["TREASURER"]);
@@ -187,6 +202,17 @@ export default function TreasurerPage() {
   const [unitMethodFilter, setUnitMethodFilter] = useState<string>(""); // "", "ONLINE", "CASH"
   const [unitSearch, setUnitSearch] = useState<string>("");
 
+  //Income Stats
+  const [incomeAmount, setIncomeAmount] = useState("");
+  const [incomeCategory, setIncomeCategory] = useState("");
+  const [incomeDescription, setIncomeDescription] = useState("");
+
+  const [incomes, setIncomes] = useState<IncomeItem[]>([]);
+  const [incomeLoading, setIncomeLoading] = useState(false);
+  const [incomeError, setIncomeError] = useState<string | null>(null);
+  const [incomeSaving, setIncomeSaving] = useState(false);
+
+
 
   // Load initial data
   useEffect(() => {
@@ -194,6 +220,7 @@ export default function TreasurerPage() {
     loadSummary();
     loadAdmins();
     loadExpenses();
+    loadIncomes();
     loadLedger();
     loadLateResidents();
   }, []);
@@ -304,6 +331,34 @@ export default function TreasurerPage() {
       setExpenseError(err.message || "تعذر تحميل المصروفات");
     }
   }
+  async function loadIncomes() {
+
+    try {
+      setIncomeLoading(true);
+      setIncomeError(null);
+      const token = localStorage.getItem("access_token");
+
+      const rows = await treasurerGetIncomes(token);
+
+      // Ensure safe mapping even if backend returns strings
+      const mapped: IncomeItem[] = (Array.isArray(rows) ? rows : []).map((r: any) => ({
+        id: Number(r.id),
+        date: String(r.date),
+        amount: Number(r.amount || 0),
+        category: r.category ?? null,
+        description: String(r.description || ""),
+        created_by: String(r.created_by || ""),
+      }));
+
+      setIncomes(mapped);
+    } catch (err: any) {
+      setIncomeError(err.message || "تعذر تحميل الإيرادات.");
+      setIncomes([]);
+    } finally {
+      setIncomeLoading(false);
+    }
+  }
+
 
   async function loadLedger() {
     try {
@@ -533,6 +588,47 @@ export default function TreasurerPage() {
       setExpenseSaving(false);
     }
   }
+
+  async function submitIncome(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!incomeAmount || !incomeDescription) {
+      setIncomeError("برجاء إدخال مبلغ الإيراد والوصف.");
+      return;
+    }
+
+    const value = parseFloat(incomeAmount);
+    if (isNaN(value) || value <= 0) {
+      setIncomeError("برجاء إدخال مبلغ صحيح أكبر من صفر.");
+      return;
+    }
+
+    try {
+      setIncomeSaving(true);
+      setIncomeError(null);
+      
+      const token = localStorage.getItem("access_token");
+      await treasurerCreateIncome(token, {
+        amount: value,
+        description: incomeDescription.trim(),
+        category: incomeCategory.trim() || undefined,
+      });
+
+      setIncomeAmount("");
+      setIncomeCategory("");
+      setIncomeDescription("");
+
+      // refresh relevant views
+      await loadIncomes();
+      await loadSummary();
+      await loadLedger();
+    } catch (err: any) {
+      setIncomeError(err.message || "تعذر تسجيل الإيراد.");
+    } finally {
+      setIncomeSaving(false);
+    }
+  }
+
 
   // Basic stats from ledger
   const ledgerStats = useMemo(() => {
@@ -796,6 +892,16 @@ export default function TreasurerPage() {
             }`}
           >
             مصروفات الاتحاد
+          </button>
+          <button
+            onClick={() => setActiveTab("INCOME")}
+            className={`px-3 py-2 rounded-lg ${
+              activeTab === "INCOME"
+                ? "bg-emerald-600 text-white"
+                : "bg-slate-100 text-slate-700"
+            }`}
+          >
+            إيرادات الاتحاد
           </button>
           <button
             onClick={() => setActiveTab("LEDGER")}
@@ -1091,6 +1197,119 @@ export default function TreasurerPage() {
               </div>
             </div>
           </>
+        )}
+        {/* TAB: Income */}
+        {activeTab === "INCOME" && (
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-sm p-4">
+              <h2 className="text-sm font-semibold text-slate-800 mb-2">
+                تسجيل إيراد للاتحاد
+              </h2>
+
+              {incomeError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-2 mb-2">
+                  {incomeError}
+                </div>
+              )}
+
+              <form onSubmit={submitIncome} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-slate-600">المبلغ (جنيه)</label>
+                  <input
+                    value={incomeAmount}
+                    onChange={(e) => setIncomeAmount(e.target.value)}
+                    placeholder="مثال: 500"
+                    className="border rounded-lg px-3 py-2 text-right"
+                    inputMode="decimal"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-slate-600">تصنيف (اختياري)</label>
+                  <input
+                    value={incomeCategory}
+                    onChange={(e) => setIncomeCategory(e.target.value)}
+                    placeholder="مثال: إيجار / إعلان / ..."
+                    className="border rounded-lg px-3 py-2 text-right"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-slate-600">الوصف</label>
+                  <input
+                    value={incomeDescription}
+                    onChange={(e) => setIncomeDescription(e.target.value)}
+                    placeholder="مثال: إيجار شقة 12 دور 3"
+                    className="border rounded-lg px-3 py-2 text-right"
+                  />
+                </div>
+
+                <div className="sm:col-span-3 flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={incomeSaving}
+                    className={`px-4 py-2 rounded-lg text-white ${
+                      incomeSaving ? "bg-slate-400" : "bg-emerald-600 hover:bg-emerald-700"
+                    }`}
+                  >
+                    {incomeSaving ? "جارٍ الحفظ..." : "تسجيل الإيراد"}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-slate-800">
+                  آخر الإيرادات
+                </h3>
+                <button
+                  type="button"
+                  onClick={loadIncomes}
+                  className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-xs"
+                >
+                  تحديث
+                </button>
+              </div>
+
+              {incomeLoading ? (
+                <p className="text-sm text-slate-600">جارٍ التحميل...</p>
+              ) : incomes.length === 0 ? (
+                <p className="text-sm text-slate-600">لا توجد إيرادات مسجلة حتى الآن.</p>
+              ) : (
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1 text-xs sm:text-sm">
+                  {incomes.map((inc) => (
+                    <div
+                      key={inc.id}
+                      className="border rounded-lg p-3 bg-slate-50 flex flex-col gap-1"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-600">
+                          {formatDateTime(inc.date)}
+                        </span>
+                        <span className="text-xs font-semibold px-2 py-1 rounded-full bg-green-100 text-green-800">
+                          +{inc.amount.toFixed(2)} جنيه
+                        </span>
+                      </div>
+
+                      <div className="text-slate-800 font-semibold">
+                        {inc.description}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 text-xs text-slate-600">
+                        {inc.category && (
+                          <span className="px-2 py-1 rounded-full bg-slate-200 text-slate-700">
+                            {inc.category}
+                          </span>
+                        )}
+                        <span>مسجّل بواسطة: {inc.created_by}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* TAB 2: Expenses */}
