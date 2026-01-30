@@ -20,7 +20,8 @@ import {
   treasurerGetBuildingAmountStats,
   treasurerGetBuildingUnitsStatus,
   treasurerCreateIncome,
-  treasurerGetIncomes
+  treasurerGetIncomes,
+  treasurerGetLedgerStats
 } from "@/lib/api";
 
 
@@ -160,6 +161,8 @@ export default function TreasurerPage() {
   // Ledger
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [ledgerError, setLedgerError] = useState<string | null>(null);
+  const [ledgerTotals, setLedgerTotals] = useState<{ total_debit: number; total_credit: number } | null>(null);
+
 
   // Late residents
   const [lateResidents, setLateResidents] = useState<LateResident[]>([]);
@@ -222,6 +225,7 @@ export default function TreasurerPage() {
     loadExpenses();
     loadIncomes();
     loadLedger();
+    loadLedgerTotals();
     loadLateResidents();
   }, []);
 
@@ -370,6 +374,20 @@ export default function TreasurerPage() {
       setLedgerError(err.message || "تعذر تحميل دفتر الاتحاد");
     }
   }
+  async function loadLedgerTotals() {
+  try {
+    const token = localStorage.getItem("access_token");
+    const data = await treasurerGetLedgerStats(token);
+    setLedgerTotals({
+      total_debit: Number(data.total_debit || 0),
+      total_credit: Number(data.total_credit || 0),
+    });
+  } catch (err: any) {
+    // don't break the page if stats fail
+    setLedgerTotals({ total_debit: 0, total_credit: 0 });
+  }
+}
+
 
   async function loadLateResidents() {
     try {
@@ -544,6 +562,7 @@ export default function TreasurerPage() {
 
       await loadSummary();
       await loadLedger();
+      await loadLedgerTotals();
     } catch (err: any) {
       alert(err.message || "تعذر تسجيل التسوية");
     } finally {
@@ -582,6 +601,7 @@ export default function TreasurerPage() {
       await loadExpenses();
       await loadSummary();
       await loadLedger();
+      await loadLedgerTotals();
     } catch (err: any) {
       setExpenseError(err.message || "تعذر تسجيل المصروف.");
     } finally {
@@ -622,6 +642,7 @@ export default function TreasurerPage() {
       await loadIncomes();
       await loadSummary();
       await loadLedger();
+      await loadLedgerTotals();
     } catch (err: any) {
       setIncomeError(err.message || "تعذر تسجيل الإيراد.");
     } finally {
@@ -1431,7 +1452,7 @@ export default function TreasurerPage() {
                 <div className="border rounded-lg p-3 bg-slate-50">
                   <div className="text-xs text-slate-600">إجمالي الإيداعات</div>
                   <div className="text-lg font-bold text-green-700 mt-1">
-                    {ledgerStats.totalCredit.toFixed(2)} جنيه
+                    {(ledgerTotals?.total_credit ?? 0).toFixed(2)} جنيه
                   </div>
                 </div>
                 <div className="border rounded-lg p-3 bg-slate-50">
@@ -1439,7 +1460,7 @@ export default function TreasurerPage() {
                     إجمالي المصروفات (مدين)
                   </div>
                   <div className="text-lg font-bold text-red-700 mt-1">
-                    {ledgerStats.totalDebit.toFixed(2)} جنيه
+                    {(ledgerTotals?.total_debit ?? 0).toFixed(2)} جنيه
                   </div>
                 </div>
                 <div className="border rounded-lg p-3 bg-slate-50">

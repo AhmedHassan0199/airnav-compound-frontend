@@ -1208,3 +1208,20 @@ export async function treasurerGetIncomes(token: string | null) {
 
   return res.json();
 }
+
+export async function treasurerGetLedgerStats(token: string | null) {
+  if (!token) throw new Error("Missing token");
+
+  const res = await apiFetch(`${API_BASE}/treasurer/ledger/stats`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "Failed to load ledger stats");
+  }
+
+  return res.json();
+}
