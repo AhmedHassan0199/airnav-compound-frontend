@@ -22,7 +22,8 @@ import {
   treasurerCreateIncome,
   treasurerGetIncomes,
   treasurerGetLedgerStats,
-  treasurerGetMonthlyStatusReport
+  treasurerGetMonthlyStatusReport,
+  treasurerGetMonthlyCollectedReport
 } from "@/lib/api";
 
 
@@ -221,6 +222,8 @@ export default function TreasurerPage() {
   const [reportYear, setReportYear] = useState<string>(String(new Date().getFullYear()));
   const [reportLoading, setReportLoading] = useState(false);
 
+  const [monthlyCollectedLoading, setMonthlyCollectedLoading] = useState(false);
+
 
   const arabicMonths: Record<number, string> = {
     1: "يناير",
@@ -393,6 +396,135 @@ export default function TreasurerPage() {
     }
   }
 
+  async function printMonthlyCollectedReport() {
+    const yearNum = parseInt(reportYear, 10);
+
+    if (!yearNum) {
+      alert("برجاء كتابة السنة");
+      return;
+    }
+
+    try {
+      setMonthlyCollectedLoading(true);
+
+      const token = localStorage.getItem("access_token");
+
+      const data = await treasurerGetMonthlyCollectedReport(token, {
+        year: yearNum,
+      });
+
+      if (!data.rows || data.rows.length === 0) {
+        alert("لا توجد أي تحصيلات لهذه السنة.");
+        return;
+      }
+
+      const rowsHtml = data.rows.map((r: any) => `
+        <tr>
+          <td>${arabicMonths[r.month] ?? r.month}</td>
+          <td>${Number(r.total_amount || 0).toFixed(2)} جنيه</td>
+        </tr>
+      `).join("");
+
+      const win = window.open("", "_blank");
+      if (!win) return;
+
+      win.document.write(`
+        <html lang="ar" dir="rtl">
+          <head>
+            <meta charset="UTF-8" />
+            <title>تقرير التحصيل الشهري</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                padding: 24px;
+                direction: rtl;
+              }
+
+              h1 {
+                text-align: center;
+                margin-bottom: 8px;
+              }
+
+              .subtitle {
+                text-align: center;
+                margin-bottom: 24px;
+                font-size: 14px;
+              }
+
+              .summary-box {
+                width: 60%;
+                margin: 0 auto 24px auto;
+                border: 1px solid #999;
+                border-radius: 8px;
+                padding: 16px;
+                text-align: center;
+                background: #f8fafc;
+              }
+
+              .summary-box .label {
+                font-size: 14px;
+                color: #475569;
+                margin-bottom: 6px;
+              }
+
+              .summary-box .value {
+                font-size: 22px;
+                font-weight: bold;
+                color: #0f172a;
+              }
+
+              table {
+                width: 70%;
+                margin: 0 auto;
+                border-collapse: collapse;
+                font-size: 14px;
+              }
+
+              th, td {
+                border: 1px solid #999;
+                padding: 10px;
+                text-align: center;
+              }
+
+              th {
+                background: #f1f5f9;
+              }
+            </style>
+          </head>
+
+          <body>
+            <h1>تقرير إجمالي التحصيل الشهري</h1>
+            <div class="subtitle">عن سنة ${yearNum}</div>
+
+            <div class="summary-box">
+              <div class="label">إجمالي التحصيل خلال السنة</div>
+              <div class="value">${Number(data.grand_total || 0).toFixed(2)} جنيه</div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>الشهر</th>
+                  <th>إجمالي التحصيل</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </body>
+        </html>
+      `);
+
+      win.document.close();
+      win.focus();
+      win.print();
+    } catch (err: any) {
+      alert(err.message || "تعذر طباعة تقرير التحصيل الشهري");
+    } finally {
+      setMonthlyCollectedLoading(false);
+    }
+  }
   // Load initial data
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1658,6 +1790,14 @@ export default function TreasurerPage() {
                 className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
               >
                 {reportLoading ? "جارٍ التجهيز..." : "Print"}
+              </button>
+              <button
+                type="button"
+                onClick={printMonthlyCollectedReport}
+                disabled={monthlyCollectedLoading}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold disabled:opacity-60"
+              >
+                {monthlyCollectedLoading ? "جارٍ التجهيز..." : "تقرير التحصيل الشهري"}
               </button>
             </div>
             <div className="bg-white rounded-xl shadow-sm p-3">

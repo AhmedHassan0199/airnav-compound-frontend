@@ -1251,3 +1251,30 @@ export async function treasurerGetMonthlyStatusReport(
 
   return res.json();
 }
+
+export async function treasurerGetMonthlyCollectedReport(
+  token: string | null,
+  params: { year: number }
+) {
+  if (!token) throw new Error("Missing token");
+
+  const query = new URLSearchParams({
+    year: String(params.year),
+  });
+
+  const res = await apiFetch(
+    `${API_BASE}/treasurer/payments/monthly-collected-report?${query.toString()}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || "تعذر تحميل تقرير التحصيل الشهري");
+  }
+
+  return res.json();
+}
