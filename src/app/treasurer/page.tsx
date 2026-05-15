@@ -21,7 +21,8 @@ import {
   treasurerGetBuildingUnitsStatus,
   treasurerCreateIncome,
   treasurerGetIncomes,
-  treasurerGetLedgerStats
+  treasurerGetLedgerStats,
+  treasurerGetMonthlyStatusReport
 } from "@/lib/api";
 
 
@@ -215,7 +216,134 @@ export default function TreasurerPage() {
   const [incomeError, setIncomeError] = useState<string | null>(null);
   const [incomeSaving, setIncomeSaving] = useState(false);
 
+  //Print Status Report
+  const [reportMonth, setReportMonth] = useState<string>(String(new Date().getMonth() + 1));
+  const [reportYear, setReportYear] = useState<string>(String(new Date().getFullYear()));
+  const [reportLoading, setReportLoading] = useState(false);
 
+
+  const arabicMonths: Record<number, string> = {
+    1: "يناير",
+    2: "فبراير",
+    3: "مارس",
+    4: "أبريل",
+    5: "مايو",
+    6: "يونيو",
+    7: "يوليو",
+    8: "أغسطس",
+    9: "سبتمبر",
+    10: "أكتوبر",
+    11: "نوفمبر",
+    12: "ديسمبر",
+  };
+
+  async function printMonthlyStatusReport() {
+    const yearNum = parseInt(reportYear, 10);
+    const monthNum = parseInt(reportMonth, 10);
+
+    if (!yearNum || !monthNum) {
+      alert("برجاء اختيار الشهر وكتابة السنة");
+      return;
+    }
+
+    try {
+      setReportLoading(true);
+      const token = localStorage.getItem("access_token");
+
+      const data = await treasurerGetMonthlyStatusReport(token, {
+        year: yearNum,
+        month: monthNum,
+      });
+
+      const monthName = arabicMonths[monthNum];
+
+      const rowsHtml = data.rows.map((r: any) => `
+        <tr>
+          <td>${r.building ?? "-"}</td>
+          <td>${r.floor ?? "-"}</td>
+          <td>${r.apartment ?? "-"}</td>
+          <td>${monthName}</td>
+          <td class="${r.paid ? "paid" : "unpaid"}">${r.status}</td>
+        </tr>
+      `).join("");
+
+      const win = window.open("", "_blank");
+      if (!win) return;
+
+      win.document.write(`
+        <html lang="ar" dir="rtl">
+          <head>
+            <meta charset="UTF-8" />
+            <title>تقرير حالة السداد</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                padding: 24px;
+                direction: rtl;
+              }
+              h1 {
+                text-align: center;
+                margin-bottom: 8px;
+              }
+              .subtitle {
+                text-align: center;
+                margin-bottom: 20px;
+                font-size: 14px;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 13px;
+              }
+              th, td {
+                border: 1px solid #999;
+                padding: 8px;
+                text-align: center;
+              }
+              th {
+                background: #f1f5f9;
+              }
+              .paid {
+                color: green;
+                font-weight: bold;
+              }
+              .unpaid {
+                color: red;
+                font-weight: bold;
+              }
+            </style>
+          </head>
+          <body>
+            <h1>تقرير حالة سداد الصيانة</h1>
+            <div class="subtitle">عن شهر ${monthName} سنة ${yearNum}</div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>عماره</th>
+                  <th>دور</th>
+                  <th>شقة</th>
+                  <th>شهر</th>
+                  <th>الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+          </body>
+        </html>
+      `);
+
+      win.document.close();
+      win.focus();
+      win.print();
+    } catch (err: any) {
+      alert(err.message || "تعذر طباعة التقرير");
+    } finally {
+      setReportLoading(false);
+    }
+  }
 
   // Load initial data
   useEffect(() => {
@@ -1444,6 +1572,46 @@ export default function TreasurerPage() {
         {/* TAB 3: Ledger & basic stats */}
         {activeTab === "LEDGER" && (
           <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-end">
+              <div>
+                <label className="block mb-1 text-sm font-semibold text-slate-700">
+                  الشهر
+                </label>
+                <select
+                  value={reportMonth}
+                  onChange={(e) => setReportMonth(e.target.value)}
+                  className="border rounded-lg px-3 py-2 text-sm"
+                >
+                  {Object.entries(arabicMonths).map(([num, name]) => (
+                    <option key={num} value={num}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block mb-1 text-sm font-semibold text-slate-700">
+                  السنة
+                </label>
+                <input
+                  type="number"
+                  value={reportYear}
+                  onChange={(e) => setReportYear(e.target.value)}
+                  className="border rounded-lg px-3 py-2 text-sm text-right"
+                  placeholder="2026"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={printMonthlyStatusReport}
+                disabled={reportLoading}
+                className="px-4 py-2 bg-brand-cyan text-white rounded-lg text-sm font-semibold disabled:opacity-60"
+              >
+                {reportLoading ? "جارٍ التجهيز..." : "Print"}
+              </button>
+            </div>
             <div className="bg-white rounded-xl shadow-sm p-3">
               <h2 className="text-sm font-semibold text-slate-800 mb-2">
                 إحصائيات دفتر الاتحاد

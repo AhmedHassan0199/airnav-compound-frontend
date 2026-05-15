@@ -1225,3 +1225,29 @@ export async function treasurerGetLedgerStats(token: string | null) {
 
   return res.json();
 }
+
+export async function treasurerGetMonthlyStatusReport(
+  token: string | null,
+  params: { year: number; month: number }
+) {
+  const query = new URLSearchParams({
+    year: String(params.year),
+    month: String(params.month),
+  });
+
+  const res = await fetch(
+    `${API_BASE}/treasurer/invoices/monthly-status-report?${query.toString()}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "تعذر تحميل تقرير حالة الفواتير");
+  }
+
+  return res.json();
+}
