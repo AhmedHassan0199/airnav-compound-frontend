@@ -257,6 +257,12 @@ export default function TreasurerPage() {
 
       const monthName = arabicMonths[monthNum];
 
+      const summary = data.summary || {
+        instapay_paid_count: 0,
+        gate_paid_count: 0,
+        total_paid_count: 0,
+      };
+
       const rowsHtml = data.rows.map((r: any) => `
         <tr>
           <td>${r.building ?? "-"}</td>
@@ -264,6 +270,7 @@ export default function TreasurerPage() {
           <td>${r.apartment ?? "-"}</td>
           <td>${monthName}</td>
           <td class="${r.paid ? "paid" : "unpaid"}">${r.status}</td>
+          <td>${r.payment_method ?? "-"}</td>
         </tr>
       `).join("");
 
@@ -311,11 +318,51 @@ export default function TreasurerPage() {
                 color: red;
                 font-weight: bold;
               }
+              .summary-box {
+                width: 70%;
+                margin: 0 auto 24px auto;
+                border: 1px solid #999;
+                border-radius: 8px;
+                overflow: hidden;
+              }
+
+              .summary-box div {
+                display: flex;
+                justify-content: space-between;
+                padding: 12px 16px;
+                border-bottom: 1px solid #ddd;
+                font-size: 15px;
+              }
+
+              .summary-box div:last-child {
+                border-bottom: 0;
+                background: #f8fafc;
+                font-weight: bold;
+              }
+
+              .summary-box strong {
+                font-size: 18px;
+              }
             </style>
           </head>
           <body>
             <h1>تقرير حالة سداد الصيانة</h1>
             <div class="subtitle">عن شهر ${monthName} سنة ${yearNum}</div>
+
+            <div class="summary-box">
+              <div>
+                <span>عدد المسددين عن طريق انستاباي</span>
+                <strong>${summary.instapay_paid_count}</strong>
+              </div>
+              <div>
+                <span>عدد المسددين علي البوابه</span>
+                <strong>${summary.gate_paid_count}</strong>
+              </div>
+              <div>
+                <span>اجمالي المسددين لهذا الشهر</span>
+                <strong>${summary.total_paid_count}</strong>
+              </div>
+            </div>
 
             <table>
               <thead>
@@ -325,6 +372,7 @@ export default function TreasurerPage() {
                   <th>شقة</th>
                   <th>شهر</th>
                   <th>الحالة</th>
+                  <th>طريق الدفع</th>
                 </tr>
               </thead>
               <tbody>
